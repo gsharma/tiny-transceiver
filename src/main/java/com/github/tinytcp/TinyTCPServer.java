@@ -1,5 +1,6 @@
 package com.github.tinytcp;
 
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -41,6 +42,7 @@ public final class TinyTCPServer {
   private static final AtomicInteger currentActiveConnectionCount = new AtomicInteger();
   private static final AtomicLong allAcceptedConnectionCount = new AtomicLong();
   private static final AtomicLong allConnectionIdleTimeoutCount = new AtomicLong();
+  private static final AtomicLong allRequestsServicedCount = new AtomicLong();
 
   // just don't mess with the lifecycle methods
   public synchronized void start() throws Exception {
@@ -52,6 +54,12 @@ public final class TinyTCPServer {
       public Thread newThread(final Runnable runnable) {
         Thread thread = new Thread(runnable);
         thread.setName("server-" + threadCounter.getAndIncrement());
+        thread.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
+          @Override
+          public void uncaughtException(Thread thread, Throwable error) {
+            logger.error("Logging unhandled exception.", error);
+          }
+        });
         return thread;
       }
     });
@@ -62,6 +70,12 @@ public final class TinyTCPServer {
       public Thread newThread(final Runnable runnable) {
         Thread thread = new Thread(runnable);
         thread.setName("worker-" + threadCounter.getAndIncrement());
+        thread.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
+          @Override
+          public void uncaughtException(Thread thread, Throwable error) {
+            logger.error("Logging unhandled exception.", error);
+          }
+        });
         return thread;
       }
     });
@@ -81,7 +95,7 @@ public final class TinyTCPServer {
 
     serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
       protected void initChannel(SocketChannel socketChannel) throws Exception {
-        socketChannel.pipeline().addLast(new TinyTCPServerHandler());
+        socketChannel.pipeline().addLast(new TinyTCPServerHandler(allRequestsServicedCount));
       }
     });
     serverChannel = serverBootstrap.bind(host, port).sync().channel();
@@ -95,8 +109,8 @@ public final class TinyTCPServer {
       logger.info("Cannot stop an already stopped server");
     }
     logger.info(
-        "Stopping tiny tcp server, allAcceptedConnectionCount:" + allAcceptedConnectionCount.get()
-            + ", currentActiveConnectionCount:" + currentActiveConnectionCount.get());
+        "Stopping tiny tcp server:: allAcceptedConnectionCount:{}, allRequestsServicedCount:{}",
+        allAcceptedConnectionCount.get(), allRequestsServicedCount.get());
     if (serverChannel != null) {
       serverChannel.close().await();
     }

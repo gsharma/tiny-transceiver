@@ -20,11 +20,15 @@ import io.netty.util.CharsetUtil;
 public class TinyTCPServerHandler extends ChannelInboundHandlerAdapter {
   private static final Logger logger =
       LogManager.getLogger(TinyTCPServerHandler.class.getSimpleName());
-  private static final AtomicLong servicedRequests = new AtomicLong();
+  private final AtomicLong allRequestsServicedCount;
+
+  public TinyTCPServerHandler(final AtomicLong allRequestsServicedCount) {
+    this.allRequestsServicedCount = allRequestsServicedCount;
+  }
 
   @Override
   public void channelRead(ChannelHandlerContext context, Object msg) throws Exception {
-    servicedRequests.incrementAndGet();
+    allRequestsServicedCount.incrementAndGet();
     logger.info("Server received type:" + msg.getClass().getName());
     final ByteBuf payload = (ByteBuf) msg;
     final String received = payload.toString(CharsetUtil.UTF_8);
@@ -33,7 +37,6 @@ public class TinyTCPServerHandler extends ChannelInboundHandlerAdapter {
     final String response = "Yo " + received;
     logger.info("Server sending: " + response);
     context.write(Unpooled.copiedBuffer(response, CharsetUtil.UTF_8));
-    logger.info("Total server requests processed:" + servicedRequests.get());
   }
 
   @Override
@@ -43,7 +46,7 @@ public class TinyTCPServerHandler extends ChannelInboundHandlerAdapter {
 
   @Override
   public void exceptionCaught(ChannelHandlerContext context, Throwable cause) throws Exception {
-    cause.printStackTrace();
+    logger.error(cause);
     context.close();
   }
 

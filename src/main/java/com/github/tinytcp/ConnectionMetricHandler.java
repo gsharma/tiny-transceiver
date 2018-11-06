@@ -56,4 +56,5 @@ public class ConnectionMetricHandler extends ChannelInboundHandlerAdapter {
   public long getAllConnectionIdleTimeoutCount() {
     return allConnectionIdleTimeoutCount.get();
   }
+
 }

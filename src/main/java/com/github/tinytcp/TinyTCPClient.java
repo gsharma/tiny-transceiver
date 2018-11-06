@@ -1,5 +1,6 @@
 package com.github.tinytcp;
 
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -45,6 +46,12 @@ public final class TinyTCPClient {
       public Thread newThread(final Runnable runnable) {
         Thread thread = new Thread(runnable);
         thread.setName("client-" + threadCounter.getAndIncrement());
+        thread.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
+          @Override
+          public void uncaughtException(Thread thread, Throwable error) {
+            logger.error("Logging unhandled exception.", error);
+          }
+        });
         return thread;
       }
     });

@@ -32,7 +32,8 @@ public class TinyTCPClientHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
   @Override
   public void exceptionCaught(ChannelHandlerContext channelHandlerContext, Throwable cause) {
-    cause.printStackTrace();
+    logger.error(cause);
     channelHandlerContext.close();
   }
+
 }
