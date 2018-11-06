@@ -1,7 +1,9 @@
 package com.github.tinytcp;
 
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.util.UUID;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -27,6 +29,7 @@ import io.netty.handler.logging.LoggingHandler;
  */
 public final class TinyTCPServer {
   private static final Logger logger = LogManager.getLogger(TinyTCPServer.class.getSimpleName());
+  private final String id = UUID.randomUUID().toString();
 
   private Channel serverChannel;
   private EventLoopGroup eventLoopThreads;
@@ -46,7 +49,8 @@ public final class TinyTCPServer {
 
   // just don't mess with the lifecycle methods
   public synchronized void start() throws Exception {
-    logger.info("Starting tiny tcp server");
+    final long startNanos = System.nanoTime();
+    logger.info("Starting tiny tcp server [{}]", id);
     eventLoopThreads = new NioEventLoopGroup(eventLoopThreadCount, new ThreadFactory() {
       private final AtomicInteger threadCounter = new AtomicInteger();
 
@@ -57,7 +61,7 @@ public final class TinyTCPServer {
         thread.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
           @Override
           public void uncaughtException(Thread thread, Throwable error) {
-            logger.error("Logging unhandled exception.", error);
+            logger.error("Logging unhandled exception", error);
           }
         });
         return thread;
@@ -73,7 +77,7 @@ public final class TinyTCPServer {
         thread.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
           @Override
           public void uncaughtException(Thread thread, Throwable error) {
-            logger.error("Logging unhandled exception.", error);
+            logger.error("Logging unhandled exception", error);
           }
         });
         return thread;
@@ -100,13 +104,15 @@ public final class TinyTCPServer {
     });
     serverChannel = serverBootstrap.bind(host, port).sync().channel();
     running = true;
-    logger.info("Started tiny tcp server");
+    final long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
+    logger.info("Started tiny tcp server [{}] in {} millis", id, elapsedMillis);
   }
 
   // just don't mess with the lifecycle methods
   public void stop() throws Exception {
+    final long startNanos = System.nanoTime();
     if (!running) {
-      logger.info("Cannot stop an already stopped server");
+      logger.info("Cannot stop an already stopped server [{}]", id);
     }
     logger.info(
         "Stopping tiny tcp server:: allAcceptedConnectionCount:{}, allRequestsServicedCount:{}",
@@ -124,11 +130,16 @@ public final class TinyTCPServer {
       serverChannel.closeFuture().await();
     }
     running = false;
-    logger.info("Stopped tiny tcp server");
+    final long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
+    logger.info("Stopped tiny tcp server [{}] in {} millis", id, elapsedMillis);
   }
 
-  public boolean running() {
+  public boolean isRunning() {
     return running;
+  }
+
+  public String getId() {
+    return id;
   }
 
 }

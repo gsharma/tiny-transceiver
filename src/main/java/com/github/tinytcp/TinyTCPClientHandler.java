@@ -19,19 +19,21 @@ public class TinyTCPClientHandler extends SimpleChannelInboundHandler<ByteBuf> {
       LogManager.getLogger(TinyTCPClientHandler.class.getSimpleName());
 
   @Override
-  public void channelActive(ChannelHandlerContext channelHandlerContext) {
+  public void channelActive(final ChannelHandlerContext channelHandlerContext) {
     final String payload = "Yo!";
     logger.info("Client sending " + payload);
     channelHandlerContext.writeAndFlush(Unpooled.copiedBuffer(payload, CharsetUtil.UTF_8));
   }
 
   @Override
-  public void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf in) {
-    logger.info("Client received: " + in.toString(CharsetUtil.UTF_8));
+  public void channelRead0(final ChannelHandlerContext channelHandlerContext,
+      final ByteBuf payload) {
+    logger.info("Client received: " + payload.toString(CharsetUtil.UTF_8));
   }
 
   @Override
-  public void exceptionCaught(ChannelHandlerContext channelHandlerContext, Throwable cause) {
+  public void exceptionCaught(final ChannelHandlerContext channelHandlerContext,
+      final Throwable cause) {
     logger.error(cause);
     channelHandlerContext.close();
   }

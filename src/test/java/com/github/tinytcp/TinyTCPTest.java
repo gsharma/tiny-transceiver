@@ -34,7 +34,7 @@ public final class TinyTCPTest {
     serverThread.start();
     int spinCounter = 0, spinsAllowed = 50;
     long waitMillis = 100L;
-    while (!server.running()) {
+    while (!server.isRunning()) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to bootstrap server after {} spins", spinsAllowed);
@@ -43,7 +43,7 @@ public final class TinyTCPTest {
       logger.info("Waiting {} millis for server to bootstrap", waitMillis);
       Thread.sleep(waitMillis);
     }
-    assertTrue(server.running());
+    assertTrue(server.isRunning());
 
     // Init 3 clients to the same server
     final TinyTCPClient clientOne = new TinyTCPClient();
@@ -92,7 +92,7 @@ public final class TinyTCPTest {
     clientThreeThread.start();
     waitMillis = 50L;
     spinCounter = 0;
-    while (!clientOne.running()) {
+    while (!clientOne.isRunning()) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to bootstrap client one after {} spins", spinsAllowed);
@@ -101,9 +101,9 @@ public final class TinyTCPTest {
       logger.info("Waiting {} millis for client one to bootstrap", waitMillis);
       Thread.sleep(waitMillis);
     }
-    assertTrue(clientOne.running());
+    assertTrue(clientOne.isRunning());
     spinCounter = 0;
-    while (!clientTwo.running()) {
+    while (!clientTwo.isRunning()) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to bootstrap client two after {} spins", spinsAllowed);
@@ -112,9 +112,9 @@ public final class TinyTCPTest {
       logger.info("Waiting {} millis for client two to bootstrap", waitMillis);
       Thread.sleep(waitMillis);
     }
-    assertTrue(clientTwo.running());
+    assertTrue(clientTwo.isRunning());
     spinCounter = 0;
-    while (!clientThree.running()) {
+    while (!clientThree.isRunning()) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to bootstrap client three after {} spins", spinsAllowed);
@@ -123,17 +123,17 @@ public final class TinyTCPTest {
       logger.info("Waiting {} millis for client three to bootstrap", waitMillis);
       Thread.sleep(waitMillis);
     }
-    assertTrue(clientThree.running());
+    assertTrue(clientThree.isRunning());
 
     // Douse clients
     clientOne.stop();
-    assertFalse(clientOne.running());
+    assertFalse(clientOne.isRunning());
     clientOneThread.interrupt();
     clientTwo.stop();
-    assertFalse(clientTwo.running());
+    assertFalse(clientTwo.isRunning());
     clientTwoThread.interrupt();
     clientThree.stop();
-    assertFalse(clientThree.running());
+    assertFalse(clientThree.isRunning());
     clientThreeThread.interrupt();
 
     // Douse server

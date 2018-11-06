@@ -34,13 +34,22 @@ public class TinyTCPServerHandler extends ChannelInboundHandlerAdapter {
     final String received = payload.toString(CharsetUtil.UTF_8);
     logger.info("Server received: " + received);
 
-    final String response = "Yo " + received;
+    final String response = handle(received);
+
     logger.info("Server sending: " + response);
-    context.write(Unpooled.copiedBuffer(response, CharsetUtil.UTF_8));
+    context.writeAndFlush(Unpooled.copiedBuffer(response, CharsetUtil.UTF_8))
+        .addListener(ChannelFutureListener.CLOSE);
+    // context.write(Unpooled.copiedBuffer(response, CharsetUtil.UTF_8));
+  }
+
+  // Charset.UTF_8
+  public String handle(final String payload) {
+    return "Yo " + payload;
   }
 
   @Override
   public void channelReadComplete(ChannelHandlerContext context) throws Exception {
+    logger.info("Server channel read complete");
     context.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
   }
 
