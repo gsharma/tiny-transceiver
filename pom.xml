@@ -2,16 +2,16 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.github.tinytcp</groupId>
-  <artifactId>tiny-tcp-server</artifactId>
+  <artifactId>tiny-transceiver</artifactId>
   <packaging>jar</packaging>
   <version>1.0-SNAPSHOT</version>
-  <name>tiny-tcp-server</name>
+  <name>tiny-transceiver</name>
   <url>http://maven.apache.org</url>
 
   <properties>
     <github.global.server>github</github.global.server>
     <github.user.name>gsharma</github.user.name>
-    <github.repo.name>tiny-tcp-server</github.repo.name>
+    <github.repo.name>tiny-transceiver</github.repo.name>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>4.12</junit.version>
     <log4j.version>2.11.1</log4j.version>
@@ -22,7 +22,7 @@
   <repositories>
     <repository>
       <id>tiny-tcp-server-mvn-repo</id>
-      <url>https://raw.githubusercontent.com/gsharma/tiny-tcp-server/mvn-repo/</url>
+      <url>https://raw.githubusercontent.com/gsharma/tiny-transceiver/mvn-repo/</url>
       <snapshots>
         <enabled>true</enabled>
         <updatePolicy>always</updatePolicy>
