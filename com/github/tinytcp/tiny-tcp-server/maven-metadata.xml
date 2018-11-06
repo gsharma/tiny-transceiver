@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>com.github.tinytcp</groupId>
+  <artifactId>tiny-tcp-server</artifactId>
+  <versioning>
+    <versions>
+      <version>1.0-SNAPSHOT</version>
+    </versions>
+    <lastUpdated>20181106075952</lastUpdated>
+  </versioning>
+</metadata>
