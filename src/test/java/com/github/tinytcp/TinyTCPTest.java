@@ -3,6 +3,8 @@ package com.github.tinytcp;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.Test;
 
 /**
@@ -11,6 +13,8 @@ import org.junit.Test;
  * @author gaurav
  */
 public final class TinyTCPTest {
+  private static final Logger logger = LogManager.getLogger(TinyTCPTest.class.getSimpleName());
+
   @Test
   public void testTinyTCPClientServer() throws Exception {
     // Fire up a server
@@ -28,7 +32,17 @@ public final class TinyTCPTest {
       }
     };
     serverThread.start();
-    Thread.sleep(500L);
+    int spinCounter = 0, spinsAllowed = 50;
+    long waitMillis = 100L;
+    while (!server.running()) {
+      spinCounter++;
+      if (spinCounter > spinsAllowed) {
+        logger.error("Failed to bootstrap server after {} spins", spinsAllowed);
+        return;
+      }
+      logger.info("Waiting {} millis for server to bootstrap", waitMillis);
+      Thread.sleep(waitMillis);
+    }
     assertTrue(server.running());
 
     // Init 3 clients to the same server
@@ -76,7 +90,17 @@ public final class TinyTCPTest {
     clientOneThread.start();
     clientTwoThread.start();
     clientThreeThread.start();
-    Thread.sleep(100L);
+    waitMillis = 50L;
+    spinCounter = 0;
+    while (!clientOne.running() && !clientTwo.running() && !clientThree.running()) {
+      spinCounter++;
+      if (spinCounter > spinsAllowed) {
+        logger.error("Failed to bootstrap clients after {} spins", spinsAllowed);
+        return;
+      }
+      logger.info("Waiting {} millis for clients to bootstrap", waitMillis);
+      Thread.sleep(waitMillis);
+    }
     assertTrue(clientOne.running());
     assertTrue(clientTwo.running());
     assertTrue(clientThree.running());
