@@ -41,10 +41,10 @@ public final class TinyTCPClient {
   private EventLoopGroup clientThreads;
   private boolean running;
 
-  // TODO: properties
+  // TODO: use a builder
   private int workerThreadCount = 2;
-  private String host = "localhost";
-  private int port = 9999;
+  private String serverHost = "localhost";
+  private int serverPort = 9999;
 
   private final AtomicLong allRequestsSent = new AtomicLong();
   private final AtomicLong allResponsesReceived = new AtomicLong();
@@ -79,10 +79,10 @@ public final class TinyTCPClient {
         socketChannel.pipeline().addLast(new TinyTCPClientHandler());
       }
     });
-    clientChannel = clientBootstrap.connect(host, port).sync().channel();
+    clientChannel = clientBootstrap.connect(serverHost, serverPort).sync().channel();
 
     final long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
-    if (clientChannel.isOpen() && clientChannel.isActive()) {
+    if (isChannelHealthy()) {
       running = true;
       logger.info("Started tiny tcp client [{}] in {} millis", id, elapsedMillis);
     } else {
@@ -112,6 +112,10 @@ public final class TinyTCPClient {
     logger.info("Stopped tiny tcp client [{}] in {} millis", id, elapsedMillis);
   }
 
+  private boolean isChannelHealthy() {
+    return clientChannel.isOpen() && clientChannel.isActive();
+  }
+
   public boolean isRunning() {
     return running;
   }
@@ -123,6 +127,10 @@ public final class TinyTCPClient {
   public boolean sendToServer(final String payload) {
     if (!running) {
       logger.error("Cannot pipe a request down a stopped client");
+      return false;
+    }
+    if (!isChannelHealthy()) {
+      logger.error("Cannot pipe a request down a stopped channel");
       return false;
     }
     allRequestsSent.incrementAndGet();

@@ -42,11 +42,11 @@ public final class TinyTCPServer {
   private EventLoopGroup workerThreads;
   private boolean running;
 
-  // TODO: properties
+  // TODO: use a builder
   private int eventLoopThreadCount = 1;
   private int workerThreadCount = 4;
-  private String host = "localhost";
-  private int port = 9999;
+  private String serverHost = "localhost";
+  private int serverPort = 9999;
 
   private static final AtomicInteger currentActiveConnections = new AtomicInteger();
   private static final AtomicLong allAcceptedConnections = new AtomicLong();
@@ -109,7 +109,7 @@ public final class TinyTCPServer {
         socketChannel.pipeline().addLast(new TinyTCPServerHandler());
       }
     });
-    serverChannel = serverBootstrap.bind(host, port).sync().channel();
+    serverChannel = serverBootstrap.bind(serverHost, serverPort).sync().channel();
     running = true;
     final long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
     logger.info("Started tiny tcp server [{}] in {} millis", id, elapsedMillis);
@@ -166,6 +166,7 @@ public final class TinyTCPServer {
     @Override
     public void channelRead(final ChannelHandlerContext context, final Object msg)
         throws Exception {
+      final long startNanos = System.nanoTime();
       allRequestsReceived.incrementAndGet();
       logger.info("Server [{}] received type {}", id, msg.getClass().getName());
       final ByteBuf payload = (ByteBuf) msg;
@@ -174,22 +175,23 @@ public final class TinyTCPServer {
 
       final String response = respondToClient(received);
 
-      context.writeAndFlush(Unpooled.copiedBuffer(response, CharsetUtil.UTF_8))
-          .addListener(ChannelFutureListener.CLOSE);
+      context.writeAndFlush(Unpooled.copiedBuffer(response, CharsetUtil.UTF_8));
+      // .addListener(ChannelFutureListener.CLOSE);
       allResponsesSent.incrementAndGet();
-      // context.write(Unpooled.copiedBuffer(response, CharsetUtil.UTF_8));
+      final long elapsedMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - startNanos);
+      logger.info("Server [{}] responded to client with response: {} in {} micros", id, response,
+          elapsedMicros);
     }
 
     // Charset.UTF_8
     public String respondToClient(final String payload) {
-      logger.info("Server [{}] responding to client, response: {}", id, payload);
       return "Yo " + payload;
     }
 
     @Override
     public void channelReadComplete(final ChannelHandlerContext context) throws Exception {
       logger.info("Server [{}] channel read complete", id);
-      context.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+      context.flush();
     }
 
     @Override

@@ -133,15 +133,24 @@ public final class TinyTCPTest {
     assertTrue(clientTwo.sendToServer("client two's request"));
     assertTrue(clientThree.sendToServer("client three's request"));
 
-    final long expectedServerResponses = 3L;
-    waitMillis = 100L;
+    // push another 2 requests
+    assertTrue(clientTwo.sendToServer("client two's 2nd request"));
+    assertTrue(clientOne.sendToServer("client one's 2nd request"));
+
+    final long expectedServerResponses = 5L;
+    waitMillis = 50L;
+    spinCounter = 0;
     while (expectedServerResponses != server.getAllResponsesSent()) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
-        logger.error("Failed to receive all expected server responses after {} spins",
-            spinsAllowed);
+        logger.error("Failed to receive all expectedServerResponses:{} after {} spins",
+            expectedServerResponses, spinsAllowed);
+        break;
       }
-      logger.info("Waiting {} millis for receiving all expected server responses", waitMillis);
+      logger.info(
+          "Waiting {} millis for receiving all expectedServerResponses:{}, serverReceived:{}, serverResponses:{}",
+          waitMillis, expectedServerResponses, server.getAllRequestsReceived(),
+          server.getAllResponsesSent());
       Thread.sleep(waitMillis);
     }
     assertEquals(expectedServerResponses, server.getAllResponsesSent());
