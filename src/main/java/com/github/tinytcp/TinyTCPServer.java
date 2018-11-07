@@ -1,7 +1,6 @@
 package com.github.tinytcp;
 
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.util.UUID;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -12,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -25,7 +25,6 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
-import io.netty.util.CharsetUtil;
 
 /**
  * A minimal TCP Server that cuts through all the nonsense and means business.
@@ -34,7 +33,7 @@ import io.netty.util.CharsetUtil;
  */
 public final class TinyTCPServer {
   private static final Logger logger = LogManager.getLogger(TinyTCPServer.class.getSimpleName());
-  private final String id = UUID.randomUUID().toString();
+  private final String id = new RandomIdProvider().id();
 
   private Channel serverChannel;
   private EventLoopGroup eventLoopThreads;
@@ -109,9 +108,15 @@ public final class TinyTCPServer {
       }
     });
     serverChannel = serverBootstrap.bind(serverHost, serverPort).sync().channel();
-    running = true;
+
     final long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
     logger.info("Started tiny tcp server [{}] in {} millis", id, elapsedMillis);
+    if (isChannelHealthy()) {
+      running = true;
+      logger.info("Started tiny tcp server [{}] in {} millis", id, elapsedMillis);
+    } else {
+      logger.info("Failed to start tiny tcp server [{}] in {} millis", id, elapsedMillis);
+    }
   }
 
   // just don't mess with the lifecycle methods
@@ -139,6 +144,10 @@ public final class TinyTCPServer {
     logger.info("Stopped tiny tcp server [{}] in {} millis", id, elapsedMillis);
   }
 
+  private boolean isChannelHealthy() {
+    return serverChannel.isOpen() && serverChannel.isActive();
+  }
+
   public boolean isRunning() {
     return running;
   }
@@ -155,6 +164,13 @@ public final class TinyTCPServer {
     return allResponsesSent.get();
   }
 
+  // TODO: externalize
+  public Response serviceRequest(final Request request) {
+    final Response response = new TinyResponse();
+    ((TinyResponse) response).setRequestId(request.getId());
+    return response;
+  }
+
   /**
    * Figure the server-side business-logic here.
    * 
@@ -169,22 +185,20 @@ public final class TinyTCPServer {
       allRequestsReceived.incrementAndGet();
       logger.info("Server [{}] received type {}", id, msg.getClass().getName());
       final ByteBuf payload = (ByteBuf) msg;
-      final String received = payload.toString(CharsetUtil.UTF_8);
-      logger.info("Server [{}] received {}", id, received);
+      final byte[] requestBytes = ByteBufUtil.getBytes(payload);
+      final Request request = new TinyRequest().deserialize(requestBytes);
+      // final String received = payload.toString(CharsetUtil.UTF_8);
+      logger.info("Server [{}] received {}", id, request);
 
-      final String response = respondToClient(received);
+      final Response response = serviceRequest(request);
+      final byte[] serializedResponse = response.serialize();
 
-      context.writeAndFlush(Unpooled.copiedBuffer(response, CharsetUtil.UTF_8));
+      context.writeAndFlush(Unpooled.copiedBuffer(serializedResponse));
       // .addListener(ChannelFutureListener.CLOSE);
       allResponsesSent.incrementAndGet();
       final long elapsedMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - startNanos);
       logger.info("Server [{}] responded to client with response: {} in {} micros", id, response,
           elapsedMicros);
-    }
-
-    // Charset.UTF_8
-    public String respondToClient(final String payload) {
-      return "Yo " + payload;
     }
 
     @Override

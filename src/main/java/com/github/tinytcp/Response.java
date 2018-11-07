@@ -1,17 +1,23 @@
 package com.github.tinytcp;
 
-import io.netty.buffer.ByteBuf;
-
 /**
  * Base response for the transceiver; its path is client<-server.
  * 
  * @author gaurav
  */
 public interface Response {
+
+  // Read the unique id of this response
   String getId();
 
-  ByteBuf serialize();
+  // Flatten the request to a byte[]
+  byte[] serialize();
 
-  Response deserialize();
+  // Deserialize and reconstruct the response object. Ideally, this should be a static
+  // function not requiring the call to default response implementation constructor.
+  Response deserialize(byte[] flattenedResponse);
+
+  // Report the IdProvider
+  IdProvider getIdProvider();
 
 }

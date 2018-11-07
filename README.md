@@ -2,4 +2,4 @@
 [![Test Coverage](https://img.shields.io/codecov/c/github/gsharma/tiny-transceiver/master.svg)](https://codecov.io/github/gsharma/tiny-transceiver?branch=master)
 
 # Tiny TCP Transceiver
-
+This project is a WIP, pls standby for completion and docs. Coming soon...

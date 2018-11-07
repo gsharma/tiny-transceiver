@@ -1,7 +1,6 @@
 package com.github.tinytcp;
 
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.util.UUID;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -12,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -26,7 +26,6 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
-import io.netty.util.CharsetUtil;
 
 /**
  * A minimal TCP Client that cuts through all the nonsense and means business.
@@ -35,7 +34,7 @@ import io.netty.util.CharsetUtil;
  */
 public final class TinyTCPClient {
   private static final Logger logger = LogManager.getLogger(TinyTCPClient.class.getSimpleName());
-  private final String id = UUID.randomUUID().toString();
+  private final String id = new RandomIdProvider().id();
 
   private Channel clientChannel;
   private EventLoopGroup clientThreads;
@@ -48,6 +47,7 @@ public final class TinyTCPClient {
 
   private final AtomicLong allRequestsSent = new AtomicLong();
   private final AtomicLong allResponsesReceived = new AtomicLong();
+
 
   // do not mess with the lifecycle
   public synchronized void start() throws Exception {
@@ -124,7 +124,8 @@ public final class TinyTCPClient {
     return id;
   }
 
-  public boolean sendToServer(final String payload) {
+  // TODO: externalize
+  public boolean sendToServer(final Request request) {
     if (!running) {
       logger.error("Cannot pipe a request down a stopped client");
       return false;
@@ -134,15 +135,17 @@ public final class TinyTCPClient {
       return false;
     }
     allRequestsSent.incrementAndGet();
-    logger.info("Client [{}] sending to server, payload: {}", id, payload);
+    logger.info("Client [{}] sending to server, payload: {}", id, request);
+    final byte[] serializedRequest = request.serialize();
     final ChannelFuture future =
-        clientChannel.writeAndFlush(Unpooled.copiedBuffer(payload, CharsetUtil.UTF_8));
+        clientChannel.writeAndFlush(Unpooled.copiedBuffer(serializedRequest));
     future.awaitUninterruptibly();
     return future.isDone();
   }
 
-  public void receiveFromServer(final String payload) {
-    logger.info("Client [{}] received from server, response: {}", id, payload);
+  // TODO: externalize
+  public void handleServerResponse(final Response response) {
+    logger.info("Client [{}] received from server, response: {}", id, response);
   }
 
   /**
@@ -161,8 +164,9 @@ public final class TinyTCPClient {
     public void channelRead0(final ChannelHandlerContext channelHandlerContext,
         final ByteBuf payload) {
       allResponsesReceived.incrementAndGet();
-      final String payloadReceived = payload.toString(CharsetUtil.UTF_8);
-      receiveFromServer(payloadReceived);
+      final byte[] responseBytes = ByteBufUtil.getBytes(payload);
+      final Response response = new TinyResponse().deserialize(responseBytes);
+      handleServerResponse(response);
     }
 
     @Override

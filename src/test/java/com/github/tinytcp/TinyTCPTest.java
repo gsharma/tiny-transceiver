@@ -129,13 +129,13 @@ public final class TinyTCPTest {
     assertTrue(clientThree.isRunning());
 
     // 3 requests sent
-    assertTrue(clientOne.sendToServer("client one's request"));
-    assertTrue(clientTwo.sendToServer("client two's request"));
-    assertTrue(clientThree.sendToServer("client three's request"));
+    assertTrue(clientOne.sendToServer(new TinyRequest()));
+    assertTrue(clientTwo.sendToServer(new TinyRequest()));
+    assertTrue(clientThree.sendToServer(new TinyRequest()));
 
     // push another 2 requests
-    assertTrue(clientTwo.sendToServer("client two's 2nd request"));
-    assertTrue(clientOne.sendToServer("client one's 2nd request"));
+    assertTrue(clientTwo.sendToServer(new TinyRequest()));
+    assertTrue(clientOne.sendToServer(new TinyRequest()));
 
     final long expectedServerResponses = 5L;
     waitMillis = 50L;
