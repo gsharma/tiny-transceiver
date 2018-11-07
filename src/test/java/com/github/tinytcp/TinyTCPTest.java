@@ -1,5 +1,6 @@
 package com.github.tinytcp;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -88,8 +89,6 @@ public final class TinyTCPTest {
 
     // Fire up the clients
     clientOneThread.start();
-    clientTwoThread.start();
-    clientThreeThread.start();
     waitMillis = 50L;
     spinCounter = 0;
     while (!clientOne.isRunning()) {
@@ -102,6 +101,8 @@ public final class TinyTCPTest {
       Thread.sleep(waitMillis);
     }
     assertTrue(clientOne.isRunning());
+
+    clientTwoThread.start();
     spinCounter = 0;
     while (!clientTwo.isRunning()) {
       spinCounter++;
@@ -113,6 +114,8 @@ public final class TinyTCPTest {
       Thread.sleep(waitMillis);
     }
     assertTrue(clientTwo.isRunning());
+
+    clientThreeThread.start();
     spinCounter = 0;
     while (!clientThree.isRunning()) {
       spinCounter++;
@@ -125,13 +128,33 @@ public final class TinyTCPTest {
     }
     assertTrue(clientThree.isRunning());
 
+    // 3 requests sent
+    assertTrue(clientOne.sendToServer("client one's request"));
+    assertTrue(clientTwo.sendToServer("client two's request"));
+    assertTrue(clientThree.sendToServer("client three's request"));
+
+    final long expectedServerResponses = 3L;
+    waitMillis = 100L;
+    while (expectedServerResponses != server.getAllResponsesSent()) {
+      spinCounter++;
+      if (spinCounter > spinsAllowed) {
+        logger.error("Failed to receive all expected server responses after {} spins",
+            spinsAllowed);
+      }
+      logger.info("Waiting {} millis for receiving all expected server responses", waitMillis);
+      Thread.sleep(waitMillis);
+    }
+    assertEquals(expectedServerResponses, server.getAllResponsesSent());
+
     // Douse clients
     clientOne.stop();
     assertFalse(clientOne.isRunning());
     clientOneThread.interrupt();
+
     clientTwo.stop();
     assertFalse(clientTwo.isRunning());
     clientTwoThread.interrupt();
+
     clientThree.stop();
     assertFalse(clientThree.isRunning());
     clientThreeThread.interrupt();

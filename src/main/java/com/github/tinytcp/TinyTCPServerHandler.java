@@ -20,41 +20,44 @@ import io.netty.util.CharsetUtil;
 public class TinyTCPServerHandler extends ChannelInboundHandlerAdapter {
   private static final Logger logger =
       LogManager.getLogger(TinyTCPServerHandler.class.getSimpleName());
+  private final String id;
   private final AtomicLong allRequestsServicedCount;
 
-  public TinyTCPServerHandler(final AtomicLong allRequestsServicedCount) {
+  public TinyTCPServerHandler(final String id, final AtomicLong allRequestsServicedCount) {
+    this.id = id;
     this.allRequestsServicedCount = allRequestsServicedCount;
   }
 
   @Override
-  public void channelRead(ChannelHandlerContext context, Object msg) throws Exception {
+  public void channelRead(final ChannelHandlerContext context, final Object msg) throws Exception {
     allRequestsServicedCount.incrementAndGet();
-    logger.info("Server received type:" + msg.getClass().getName());
+    logger.info("Server [{}] received type {}", id, msg.getClass().getName());
     final ByteBuf payload = (ByteBuf) msg;
     final String received = payload.toString(CharsetUtil.UTF_8);
-    logger.info("Server received: " + received);
+    logger.info("Server [{}] received {}", id, received);
 
-    final String response = handle(received);
+    final String response = respondToClient(received);
 
-    logger.info("Server sending: " + response);
     context.writeAndFlush(Unpooled.copiedBuffer(response, CharsetUtil.UTF_8))
         .addListener(ChannelFutureListener.CLOSE);
     // context.write(Unpooled.copiedBuffer(response, CharsetUtil.UTF_8));
   }
 
   // Charset.UTF_8
-  public String handle(final String payload) {
+  public String respondToClient(final String payload) {
+    logger.info("Server [{}] responding to client, response: {}", id, payload);
     return "Yo " + payload;
   }
 
   @Override
-  public void channelReadComplete(ChannelHandlerContext context) throws Exception {
-    logger.info("Server channel read complete");
+  public void channelReadComplete(final ChannelHandlerContext context) throws Exception {
+    logger.info("Server [{}] channel read complete", id);
     context.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
   }
 
   @Override
-  public void exceptionCaught(ChannelHandlerContext context, Throwable cause) throws Exception {
+  public void exceptionCaught(final ChannelHandlerContext context, final Throwable cause)
+      throws Exception {
     logger.error(cause);
     context.close();
   }

@@ -11,8 +11,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
@@ -21,6 +26,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.util.CharsetUtil;
 
 /**
  * A minimal TCP Server that cuts through all the nonsense and means business.
@@ -42,10 +48,11 @@ public final class TinyTCPServer {
   private String host = "localhost";
   private int port = 9999;
 
-  private static final AtomicInteger currentActiveConnectionCount = new AtomicInteger();
-  private static final AtomicLong allAcceptedConnectionCount = new AtomicLong();
-  private static final AtomicLong allConnectionIdleTimeoutCount = new AtomicLong();
-  private static final AtomicLong allRequestsServicedCount = new AtomicLong();
+  private static final AtomicInteger currentActiveConnections = new AtomicInteger();
+  private static final AtomicLong allAcceptedConnections = new AtomicLong();
+  private static final AtomicLong allConnectionIdleTimeouts = new AtomicLong();
+  private static final AtomicLong allRequestsReceived = new AtomicLong();
+  private static final AtomicLong allResponsesSent = new AtomicLong();
 
   // just don't mess with the lifecycle methods
   public synchronized void start() throws Exception {
@@ -94,12 +101,12 @@ public final class TinyTCPServer {
 
     // TODO: switch to using a ChannelInitializer implementation
     final ConnectionMetricHandler connectionMetricHandler = new ConnectionMetricHandler(
-        currentActiveConnectionCount, allAcceptedConnectionCount, allConnectionIdleTimeoutCount);
+        currentActiveConnections, allAcceptedConnections, allConnectionIdleTimeouts);
     serverBootstrap.handler(connectionMetricHandler);
 
     serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
       protected void initChannel(SocketChannel socketChannel) throws Exception {
-        socketChannel.pipeline().addLast(new TinyTCPServerHandler(allRequestsServicedCount));
+        socketChannel.pipeline().addLast(new TinyTCPServerHandler());
       }
     });
     serverChannel = serverBootstrap.bind(host, port).sync().channel();
@@ -114,9 +121,8 @@ public final class TinyTCPServer {
     if (!running) {
       logger.info("Cannot stop an already stopped server [{}]", id);
     }
-    logger.info(
-        "Stopping tiny tcp server:: allAcceptedConnectionCount:{}, allRequestsServicedCount:{}",
-        allAcceptedConnectionCount.get(), allRequestsServicedCount.get());
+    logger.info("Stopping tiny tcp server [{}]:: allAcceptedConnections:{}, allRequestsReceived:{}",
+        id, allAcceptedConnections.get(), allRequestsReceived.get());
     if (serverChannel != null) {
       serverChannel.close().await();
     }
@@ -140,6 +146,59 @@ public final class TinyTCPServer {
 
   public String getId() {
     return id;
+  }
+
+  public long getAllRequestsReceived() {
+    return allRequestsReceived.get();
+  }
+
+  public long getAllResponsesSent() {
+    return allResponsesSent.get();
+  }
+
+  /**
+   * Figure the server-side business-logic here.
+   * 
+   * @author gaurav
+   */
+  public class TinyTCPServerHandler extends ChannelInboundHandlerAdapter {
+
+    @Override
+    public void channelRead(final ChannelHandlerContext context, final Object msg)
+        throws Exception {
+      allRequestsReceived.incrementAndGet();
+      logger.info("Server [{}] received type {}", id, msg.getClass().getName());
+      final ByteBuf payload = (ByteBuf) msg;
+      final String received = payload.toString(CharsetUtil.UTF_8);
+      logger.info("Server [{}] received {}", id, received);
+
+      final String response = respondToClient(received);
+
+      context.writeAndFlush(Unpooled.copiedBuffer(response, CharsetUtil.UTF_8))
+          .addListener(ChannelFutureListener.CLOSE);
+      allResponsesSent.incrementAndGet();
+      // context.write(Unpooled.copiedBuffer(response, CharsetUtil.UTF_8));
+    }
+
+    // Charset.UTF_8
+    public String respondToClient(final String payload) {
+      logger.info("Server [{}] responding to client, response: {}", id, payload);
+      return "Yo " + payload;
+    }
+
+    @Override
+    public void channelReadComplete(final ChannelHandlerContext context) throws Exception {
+      logger.info("Server [{}] channel read complete", id);
+      context.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+    }
+
+    @Override
+    public void exceptionCaught(final ChannelHandlerContext context, final Throwable cause)
+        throws Exception {
+      logger.error(cause);
+      context.close();
+    }
+
   }
 
 }
