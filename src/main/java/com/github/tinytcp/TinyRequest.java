@@ -1,9 +1,11 @@
 package com.github.tinytcp;
 
+import java.util.Objects;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+// import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * Reference Implementation of a lightweight Request.
@@ -13,10 +15,16 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class TinyRequest implements Request {
   private static final transient Logger logger =
       LogManager.getLogger(TinyRequest.class.getSimpleName());
-  @JsonIgnore
-  private final IdProvider idProvider = new RandomIdProvider();
+  // @JsonIgnore
+  // private IdProvider idProvider;
 
-  private String id = idProvider.id();
+  private String id;
+
+  public TinyRequest(final IdProvider idProvider) {
+    Objects.requireNonNull(idProvider, "idProvider cannot be null");
+    // this.idProvider = idProvider;
+    this.id = idProvider.id();
+  }
 
   @Override
   public byte[] serialize() {
@@ -48,14 +56,9 @@ public class TinyRequest implements Request {
   }
 
   @Override
-  public IdProvider getIdProvider() {
-    return idProvider;
-  }
-
-  @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    builder.append("TinyRequest [id:").append(id).append("]");
+    builder.append("TinyRequest[id:").append(id).append("]");
     return builder.toString();
   }
 
@@ -87,6 +90,14 @@ public class TinyRequest implements Request {
       return false;
     }
     return true;
+  }
+
+  // exists to help jackson deserialize
+  TinyRequest() {}
+
+  // exists to help jackson deserialize
+  void setId(final String id) {
+    this.id = id;
   }
 
 }

@@ -10,6 +10,9 @@ public interface Response {
   // Read the unique id of this response
   String getId();
 
+  // Return error, if any
+  String getError();
+
   // Flatten the request to a byte[]
   byte[] serialize();
 
@@ -18,6 +21,8 @@ public interface Response {
   Response deserialize(byte[] flattenedResponse);
 
   // Report the IdProvider
-  IdProvider getIdProvider();
+  // IdProvider getIdProvider();
+
+  String getRequestId();
 
 }

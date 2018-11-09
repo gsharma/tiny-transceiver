@@ -1,5 +1,8 @@
 package com.github.tinytcp;
 
+import java.util.Objects;
+import java.util.Optional;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -13,11 +16,21 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class TinyResponse implements Response {
   @JsonIgnore
   private static final Logger logger = LogManager.getLogger(TinyResponse.class.getSimpleName());
-  @JsonIgnore
-  private final IdProvider idProvider = new RandomIdProvider();
+  // @JsonIgnore
+  // private IdProvider idProvider;
 
-  private String id = idProvider.id();
+  private String id;
   private String requestId;
+  private String error;
+
+  public TinyResponse(final IdProvider idProvider, final Optional<String> requestId) {
+    Objects.requireNonNull(idProvider, "idProvider cannot be null");
+    // this.idProvider = idProvider;
+    this.id = idProvider.id();
+    if (requestId.isPresent()) {
+      this.requestId = requestId.get();
+    }
+  }
 
   @Override
   public byte[] serialize() {
@@ -49,23 +62,20 @@ public class TinyResponse implements Response {
   }
 
   @Override
-  public IdProvider getIdProvider() {
-    return idProvider;
-  }
-
   public String getRequestId() {
     return requestId;
   }
 
-  public void setRequestId(String requestId) {
-    this.requestId = requestId;
+  @Override
+  public String getError() {
+    return error;
   }
 
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    builder.append("TinyResponse [id:").append(id).append(", requestId:").append(requestId)
-        .append("]");
+    builder.append("TinyResponse[id:").append(id).append(",requestId:").append(requestId)
+        .append(",error:").append(error).append("]");
     return builder.toString();
   }
 
@@ -105,6 +115,19 @@ public class TinyResponse implements Response {
       return false;
     }
     return true;
+  }
+
+  // exists to help jackson deserialize
+  TinyResponse() {}
+
+  // exists to help jackson deserialize
+  void setId(final String id) {
+    this.id = id;
+  }
+
+  // exists to help jackson deserialize
+  void setError(final String error) {
+    this.error = error;
   }
 
 }

@@ -18,6 +18,6 @@ public interface Request {
   Request deserialize(byte[] flattenedRequest);
 
   // Report the IdProvider
-  IdProvider getIdProvider();
+  // IdProvider getIdProvider();
 
 }
