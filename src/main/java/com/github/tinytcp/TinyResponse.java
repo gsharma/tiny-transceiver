@@ -4,7 +4,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Reference Implementation of a lightweight Response.
@@ -16,8 +15,6 @@ public class TinyResponse implements Response {
   private static final Logger logger = LogManager.getLogger(TinyResponse.class.getSimpleName());
   @JsonIgnore
   private final IdProvider idProvider = new RandomIdProvider();
-  @JsonIgnore
-  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private String id = idProvider.id();
   private String requestId;
@@ -26,7 +23,7 @@ public class TinyResponse implements Response {
   public byte[] serialize() {
     byte[] serialized = new byte[0];
     try {
-      serialized = objectMapper.writeValueAsBytes(this);
+      serialized = InternalLib.getObjectMapper().writeValueAsBytes(this);
     } catch (Exception serDeProblem) {
       logger.error(String.format("Encountered error during serialization of %s", toString()),
           serDeProblem);
@@ -43,7 +40,8 @@ public class TinyResponse implements Response {
   public Response deserialize(final byte[] flattenedResponse) {
     Response deserializedResponse = null;
     try {
-      deserializedResponse = objectMapper.readValue(flattenedResponse, TinyResponse.class);
+      deserializedResponse =
+          InternalLib.getObjectMapper().readValue(flattenedResponse, TinyResponse.class);
     } catch (Exception serDeProblem) {
       logger.error("Encountered error during deserialization of flattened response", serDeProblem);
     }

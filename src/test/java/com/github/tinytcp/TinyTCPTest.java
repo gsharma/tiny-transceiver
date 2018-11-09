@@ -80,7 +80,7 @@ public final class TinyTCPTest {
     assertTrue(serverTwo.isRunning());
 
     // Init 3 clients to serverOne
-    final TinyTCPClient clientOne = new TinyTCPClient(serverOneHost, serverOnePort);
+    final TinyTCPClient clientOne = new TinyTCPClient(serverOneHost, serverOnePort, false);
     Thread clientOneThread = new Thread() {
       {
         setName("test-client-00");
@@ -93,7 +93,7 @@ public final class TinyTCPTest {
         }
       }
     };
-    final TinyTCPClient clientTwo = new TinyTCPClient(serverOneHost, serverOnePort);
+    final TinyTCPClient clientTwo = new TinyTCPClient(serverOneHost, serverOnePort, false);
     Thread clientTwoThread = new Thread() {
       {
         setName("test-client-01");
@@ -106,7 +106,7 @@ public final class TinyTCPTest {
         }
       }
     };
-    final TinyTCPClient clientThree = new TinyTCPClient(serverOneHost, serverOnePort);
+    final TinyTCPClient clientThree = new TinyTCPClient(serverOneHost, serverOnePort, false);
     Thread clientThreeThread = new Thread() {
       {
         setName("test-client-02");
@@ -121,7 +121,7 @@ public final class TinyTCPTest {
     };
 
     // Init 2 clients to serverTwo
-    final TinyTCPClient clientFour = new TinyTCPClient(serverTwoHost, serverTwoPort);
+    final TinyTCPClient clientFour = new TinyTCPClient(serverTwoHost, serverTwoPort, false);
     Thread clientFourThread = new Thread() {
       {
         setName("test-client-10");
@@ -134,7 +134,7 @@ public final class TinyTCPTest {
         }
       }
     };
-    final TinyTCPClient clientFive = new TinyTCPClient(serverTwoHost, serverTwoPort);
+    final TinyTCPClient clientFive = new TinyTCPClient(serverTwoHost, serverTwoPort, false);
     Thread clientFiveThread = new Thread() {
       {
         setName("test-client-11");

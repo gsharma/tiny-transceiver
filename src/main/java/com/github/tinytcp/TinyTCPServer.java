@@ -1,6 +1,7 @@
 package com.github.tinytcp;
 
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.net.SocketAddress;
 import java.util.Objects;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -119,8 +120,8 @@ public final class TinyTCPServer {
     final long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
     if (isChannelHealthy()) {
       running = true;
-      logger.info("Started tiny tcp server [{}] at {}:{} in {} millis", id, serverHost, serverPort,
-          elapsedMillis);
+      logger.info("Started tiny tcp server [{}] at {} in {} millis", id,
+          serverChannel.localAddress(), elapsedMillis);
     } else {
       logger.info("Failed to start tiny tcp server [{}] at {}:{} in {} millis", id, serverHost,
           serverPort, elapsedMillis);
@@ -134,8 +135,8 @@ public final class TinyTCPServer {
       logger.info("Cannot stop an already stopped server [{}]", id);
     }
     logger.info(
-        "Stopping tiny tcp server [{}] at {}:{} :: allAcceptedConnections:{}, allRequestsReceived:{}",
-        id, serverHost, serverPort, allAcceptedConnections.get(), allRequestsReceived.get());
+        "Stopping tiny tcp server [{}] at {} :: allAcceptedConnections:{}, allRequestsReceived:{}",
+        id, serverChannel.localAddress(), allAcceptedConnections.get(), allRequestsReceived.get());
     if (serverChannel != null) {
       serverChannel.close().await();
     }
@@ -193,22 +194,21 @@ public final class TinyTCPServer {
         throws Exception {
       final long startNanos = System.nanoTime();
       allRequestsReceived.incrementAndGet();
-      logger.info("Server [{}] received type {}", id, msg.getClass().getName());
       final ByteBuf payload = (ByteBuf) msg;
       final byte[] requestBytes = ByteBufUtil.getBytes(payload);
       final Request request = new TinyRequest().deserialize(requestBytes);
-      // final String received = payload.toString(CharsetUtil.UTF_8);
-      logger.info("Server [{}] received {}", id, request);
+      final SocketAddress client = context.channel().remoteAddress();
+      logger.info("Server [{}] received {} type {} from {}", id, request, msg.getClass().getName(),
+          client);
 
       final Response response = serviceRequest(request);
       final byte[] serializedResponse = response.serialize();
 
       context.writeAndFlush(Unpooled.copiedBuffer(serializedResponse));
-      // .addListener(ChannelFutureListener.CLOSE);
       allResponsesSent.incrementAndGet();
       final long elapsedMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - startNanos);
-      logger.info("Server [{}] responded to client with response: {} in {} micros", id, response,
-          elapsedMicros);
+      logger.info("Server [{}] responded to client {} with response: {} in {} micros", id, client,
+          response, elapsedMicros);
     }
 
     @Override

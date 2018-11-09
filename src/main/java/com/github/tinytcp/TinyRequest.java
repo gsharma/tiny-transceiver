@@ -4,7 +4,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Reference Implementation of a lightweight Request.
@@ -16,15 +15,14 @@ public class TinyRequest implements Request {
       LogManager.getLogger(TinyRequest.class.getSimpleName());
   @JsonIgnore
   private final IdProvider idProvider = new RandomIdProvider();
-  @JsonIgnore
-  private static final ObjectMapper objectMapper = new ObjectMapper();
+
   private String id = idProvider.id();
 
   @Override
   public byte[] serialize() {
     byte[] serialized = new byte[0];
     try {
-      serialized = objectMapper.writeValueAsBytes(this);
+      serialized = InternalLib.getObjectMapper().writeValueAsBytes(this);
     } catch (Exception serDeProblem) {
       logger.error(String.format("Encountered error during serialization of %s", toString()),
           serDeProblem);
@@ -41,7 +39,8 @@ public class TinyRequest implements Request {
   public Request deserialize(final byte[] flattenedRequest) {
     Request deserializedRequest = null;
     try {
-      deserializedRequest = objectMapper.readValue(flattenedRequest, TinyRequest.class);
+      deserializedRequest =
+          InternalLib.getObjectMapper().readValue(flattenedRequest, TinyRequest.class);
     } catch (Exception serDeProblem) {
       logger.error("Encountered error during deserialization of flattened request", serDeProblem);
     }

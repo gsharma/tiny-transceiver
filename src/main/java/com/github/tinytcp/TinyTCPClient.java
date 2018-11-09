@@ -43,16 +43,19 @@ public final class TinyTCPClient {
 
   // TODO: use a builder
   private int workerThreadCount = 2;
-  private String serverHost;
-  private int serverPort;
+  private final String serverHost;
+  private final int serverPort;
+  private final boolean localServer;
 
   private final AtomicLong allRequestsSent = new AtomicLong();
   private final AtomicLong allResponsesReceived = new AtomicLong();
 
-  public TinyTCPClient(final String serverHost, final int serverPort) {
+  // TODO: add support for local server
+  public TinyTCPClient(final String serverHost, final int serverPort, final boolean localServer) {
     Objects.requireNonNull(serverHost, "serverHost cannot be null");
     this.serverHost = serverHost;
     this.serverPort = serverPort;
+    this.localServer = localServer;
   }
 
   // do not mess with the lifecycle
@@ -90,8 +93,8 @@ public final class TinyTCPClient {
     final long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
     if (isChannelHealthy()) {
       running = true;
-      logger.info("Started tiny tcp client [{}] connected to {}:{} in {} millis", id, serverHost,
-          serverPort, elapsedMillis);
+      logger.info("Started tiny tcp client [{}] connected to {} in {} millis", id,
+          clientChannel.remoteAddress(), elapsedMillis);
     } else {
       logger.info("Failed to start tiny tcp client [{}] to connect to {}:{} in {} millis", id,
           serverHost, serverPort, elapsedMillis);
@@ -105,8 +108,8 @@ public final class TinyTCPClient {
       logger.info("Cannot stop an already stopped client [{}]", id);
     }
     logger.info(
-        "Stopping tiny tcp client [{}] connected to {}:{} :: allRequestsSent:{}, allResponsesReceived:{}",
-        id, serverHost, serverPort, allRequestsSent.get(), allResponsesReceived.get());
+        "Stopping tiny tcp client [{}] connected to {} :: allRequestsSent:{}, allResponsesReceived:{}",
+        id, clientChannel.remoteAddress(), allRequestsSent.get(), allResponsesReceived.get());
     if (clientChannel != null) {
       clientChannel.close().await();
     }
@@ -118,8 +121,8 @@ public final class TinyTCPClient {
     }
     running = false;
     final long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
-    logger.info("Stopped tiny tcp client [{}] connected to {}:{} in {} millis", id, serverHost,
-        serverPort, elapsedMillis);
+    logger.info("Stopped tiny tcp client [{}] connected to {} in {} millis", id,
+        clientChannel.remoteAddress(), elapsedMillis);
   }
 
   private boolean isChannelHealthy() {
