@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.net.InetSocketAddress;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.Test;
@@ -34,11 +36,15 @@ public final class TinyTCPTest {
     // Fire up 2 servers
     final String serverOneHost = "localhost";
     final int serverOnePort = 9999;
-    final TinyTCPServer serverOne = new TinyTCPServer(serverOneHost, serverOnePort);
+    final InetSocketAddress serverOneAddress =
+        InetSocketAddress.createUnresolved(serverOneHost, serverOnePort);
+    final TinyTCPServer serverOne = new TinyTCPServer(serverOneAddress);
 
     final String serverTwoHost = "localhost";
     final int serverTwoPort = 8888;
-    final TinyTCPServer serverTwo = new TinyTCPServer(serverTwoHost, serverTwoPort);
+    final InetSocketAddress serverTwoAddress =
+        InetSocketAddress.createUnresolved(serverTwoHost, serverTwoPort);
+    final TinyTCPServer serverTwo = new TinyTCPServer(serverTwoAddress);
 
     Thread serverThread = new Thread() {
       {
@@ -80,7 +86,7 @@ public final class TinyTCPTest {
     assertTrue(serverTwo.isRunning());
 
     // Init 3 clients to serverOne
-    final TinyTCPClient clientOne = new TinyTCPClient(serverOneHost, serverOnePort, false);
+    final TinyTCPClient clientOne = new TinyTCPClient(serverOneAddress, false);
     Thread clientOneThread = new Thread() {
       {
         setName("test-client-00");
@@ -93,7 +99,7 @@ public final class TinyTCPTest {
         }
       }
     };
-    final TinyTCPClient clientTwo = new TinyTCPClient(serverOneHost, serverOnePort, false);
+    final TinyTCPClient clientTwo = new TinyTCPClient(serverOneAddress, false);
     Thread clientTwoThread = new Thread() {
       {
         setName("test-client-01");
@@ -106,7 +112,7 @@ public final class TinyTCPTest {
         }
       }
     };
-    final TinyTCPClient clientThree = new TinyTCPClient(serverOneHost, serverOnePort, false);
+    final TinyTCPClient clientThree = new TinyTCPClient(serverOneAddress, false);
     Thread clientThreeThread = new Thread() {
       {
         setName("test-client-02");
@@ -121,7 +127,7 @@ public final class TinyTCPTest {
     };
 
     // Init 2 clients to serverTwo
-    final TinyTCPClient clientFour = new TinyTCPClient(serverTwoHost, serverTwoPort, false);
+    final TinyTCPClient clientFour = new TinyTCPClient(serverTwoAddress, false);
     Thread clientFourThread = new Thread() {
       {
         setName("test-client-10");
@@ -134,7 +140,7 @@ public final class TinyTCPTest {
         }
       }
     };
-    final TinyTCPClient clientFive = new TinyTCPClient(serverTwoHost, serverTwoPort, false);
+    final TinyTCPClient clientFive = new TinyTCPClient(serverTwoAddress, false);
     Thread clientFiveThread = new Thread() {
       {
         setName("test-client-11");
@@ -216,18 +222,18 @@ public final class TinyTCPTest {
     assertTrue(clientFive.isRunning());
 
     // push 3 requests (intended for serverOne)
-    assertTrue(clientOne.sendToServer(new TinyRequest()));
-    assertTrue(clientTwo.sendToServer(new TinyRequest()));
-    assertTrue(clientThree.sendToServer(new TinyRequest()));
+    assertTrue(clientOne.sendToServer(serverOneAddress, new TinyRequest()));
+    assertTrue(clientTwo.sendToServer(serverOneAddress, new TinyRequest()));
+    assertTrue(clientThree.sendToServer(serverOneAddress, new TinyRequest()));
 
     // push another 2 requests (intended for serverOne)
-    assertTrue(clientTwo.sendToServer(new TinyRequest()));
-    assertTrue(clientOne.sendToServer(new TinyRequest()));
+    assertTrue(clientTwo.sendToServer(serverOneAddress, new TinyRequest()));
+    assertTrue(clientOne.sendToServer(serverOneAddress, new TinyRequest()));
 
     // push 3 requests (intended for serverTwo)
-    assertTrue(clientFour.sendToServer(new TinyRequest()));
-    assertTrue(clientFive.sendToServer(new TinyRequest()));
-    assertTrue(clientFour.sendToServer(new TinyRequest()));
+    assertTrue(clientFour.sendToServer(serverTwoAddress, new TinyRequest()));
+    assertTrue(clientFive.sendToServer(serverTwoAddress, new TinyRequest()));
+    assertTrue(clientFour.sendToServer(serverTwoAddress, new TinyRequest()));
 
     final long expectedServerOneResponses = 5L;
     waitMillis = 50L;
