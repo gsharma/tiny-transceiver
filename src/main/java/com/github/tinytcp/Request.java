@@ -17,6 +17,8 @@ public interface Request {
   // function not requiring the call to default request implementation constructor.
   Request deserialize(byte[] flattenedRequest);
 
+  ExchangeType getType();
+
   // Report the IdProvider
   // IdProvider getIdProvider();
 

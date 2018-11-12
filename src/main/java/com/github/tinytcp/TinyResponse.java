@@ -13,7 +13,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  * 
  * @author gaurav
  */
-public class TinyResponse implements Response {
+public final class TinyResponse implements Response {
   @JsonIgnore
   private static final Logger logger = LogManager.getLogger(TinyResponse.class.getSimpleName());
   // @JsonIgnore
@@ -22,14 +22,18 @@ public class TinyResponse implements Response {
   private String id;
   private String requestId;
   private String error;
+  private ExchangeType type;
 
-  public TinyResponse(final IdProvider idProvider, final Optional<String> requestId) {
+  public TinyResponse(final IdProvider idProvider, final Optional<String> requestId,
+      final ExchangeType type) {
     Objects.requireNonNull(idProvider, "idProvider cannot be null");
+    Objects.requireNonNull(type, "exchangeType cannot be null");
     // this.idProvider = idProvider;
     this.id = idProvider.id();
     if (requestId.isPresent()) {
       this.requestId = requestId.get();
     }
+    this.type = type;
   }
 
   @Override
@@ -47,6 +51,11 @@ public class TinyResponse implements Response {
   @Override
   public String getId() {
     return id;
+  }
+
+  @Override
+  public ExchangeType getType() {
+    return type;
   }
 
   @Override
@@ -75,7 +84,7 @@ public class TinyResponse implements Response {
   public String toString() {
     StringBuilder builder = new StringBuilder();
     builder.append("TinyResponse[id:").append(id).append(",requestId:").append(requestId)
-        .append(",error:").append(error).append("]");
+        .append(",type:").append(type).append(",error:").append(error).append("]");
     return builder.toString();
   }
 
@@ -85,6 +94,7 @@ public class TinyResponse implements Response {
     int result = 1;
     result = prime * result + ((id == null) ? 0 : id.hashCode());
     result = prime * result + ((requestId == null) ? 0 : requestId.hashCode());
+    result = prime * result + ((type == null) ? 0 : type.hashCode());
     return result;
   }
 
@@ -114,6 +124,9 @@ public class TinyResponse implements Response {
     } else if (!requestId.equals(other.requestId)) {
       return false;
     }
+    if (type != other.type) {
+      return false;
+    }
     return true;
   }
 
@@ -128,6 +141,11 @@ public class TinyResponse implements Response {
   // exists to help jackson deserialize
   void setError(final String error) {
     this.error = error;
+  }
+
+  // exists to help jackson deserialize
+  void setType(final ExchangeType type) {
+    this.type = type;
   }
 
 }

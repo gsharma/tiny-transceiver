@@ -1,6 +1,7 @@
 package com.github.tinytcp;
 
 import java.net.SocketAddress;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -34,6 +35,7 @@ final class TinyTCPStateHandler extends ChannelDuplexHandler {
   private PendingWriteQueue pendingWriteQueue;
   private final String id;
   private final Type type;
+  private final IdProvider idProvider;
 
   enum Type {
     CLIENT("client"), SERVER("server");
@@ -44,9 +46,11 @@ final class TinyTCPStateHandler extends ChannelDuplexHandler {
     }
   }
 
-  TinyTCPStateHandler(final String id, final Type type) {
-    this.id = id;
+  // IdProvider is pushed down for any requests that might need to be curated
+  TinyTCPStateHandler(final String parentId, final Type type, final IdProvider idProvider) {
+    this.id = parentId;
     this.type = type;
+    this.idProvider = idProvider;
     // flusherDaemon = new FlusherDaemon(200L);
     // flusherDaemon.start();
   }
@@ -156,18 +160,38 @@ final class TinyTCPStateHandler extends ChannelDuplexHandler {
       switch (idleStateEvent.state()) {
         case READER_IDLE:
           logger.info("{}[{}] reader is idle", type.name, id);
+          publishHeartbeat(context);
           // context.disconnect();
           break;
         case WRITER_IDLE:
-          logger.info("{}[{}] writer us idle", type.name, id);
+          logger.info("{}[{}] writer is idle", type.name, id);
+          publishHeartbeat(context);
           break;
         case ALL_IDLE:
           logger.info("{}[{}] reader & writer are idle", type.name, id);
+          publishHeartbeat(context);
           break;
         default:
           logger.info("{}[{}] in {} idle state", type.name, id, idleStateEvent.state());
           break;
       }
+    }
+  }
+
+  private void publishHeartbeat(final ChannelHandlerContext context) {
+    logger.info("{}[{}] publishing heartbeat to overcome idle state", type.name, id);
+    switch (type) {
+      case SERVER:
+        final Response response =
+            new TinyResponse(idProvider, Optional.empty(), ExchangeType.HEARTBEAT);
+        final byte[] serializedResponse = response.serialize();
+        context.write(Unpooled.copiedBuffer(serializedResponse));
+        break;
+      case CLIENT:
+        final Request request = new TinyRequest(idProvider, ExchangeType.HEARTBEAT);
+        final byte[] serializedRequest = request.serialize();
+        context.write(Unpooled.copiedBuffer(serializedRequest));
+        break;
     }
   }
 

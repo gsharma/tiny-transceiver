@@ -25,4 +25,6 @@ public interface Response {
 
   String getRequestId();
 
+  ExchangeType getType();
+
 }

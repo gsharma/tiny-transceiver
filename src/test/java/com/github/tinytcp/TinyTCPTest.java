@@ -6,7 +6,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -32,7 +31,6 @@ public final class TinyTCPTest {
    * 5a. server.stop()<br/>
    * 5b. server.isRunning()<br/>
    */
-  @Ignore
   @Test
   public void test5ClientsTo2Servers() throws Exception {
     // Fire up 2 servers
@@ -234,18 +232,26 @@ public final class TinyTCPTest {
     assertTrue(clientFive.isConnected(serverTwoDescriptor));
 
     // push 3 requests (intended for serverOne)
-    assertTrue(clientOne.dispatchRequest(new TinyRequest(idProvider), serverOneDescriptor));
-    assertTrue(clientTwo.dispatchRequest(new TinyRequest(idProvider), serverOneDescriptor));
-    assertTrue(clientThree.dispatchRequest(new TinyRequest(idProvider), serverOneDescriptor));
+    assertTrue(clientOne.dispatchRequest(new TinyRequest(idProvider, ExchangeType.NORMAL),
+        serverOneDescriptor));
+    assertTrue(clientTwo.dispatchRequest(new TinyRequest(idProvider, ExchangeType.NORMAL),
+        serverOneDescriptor));
+    assertTrue(clientThree.dispatchRequest(new TinyRequest(idProvider, ExchangeType.NORMAL),
+        serverOneDescriptor));
 
     // push another 2 requests (intended for serverOne)
-    assertTrue(clientTwo.dispatchRequest(new TinyRequest(idProvider), serverOneDescriptor));
-    assertTrue(clientOne.dispatchRequest(new TinyRequest(idProvider), serverOneDescriptor));
+    assertTrue(clientTwo.dispatchRequest(new TinyRequest(idProvider, ExchangeType.NORMAL),
+        serverOneDescriptor));
+    assertTrue(clientOne.dispatchRequest(new TinyRequest(idProvider, ExchangeType.NORMAL),
+        serverOneDescriptor));
 
     // push 3 requests (intended for serverTwo)
-    assertTrue(clientFour.dispatchRequest(new TinyRequest(idProvider), serverTwoDescriptor));
-    assertTrue(clientFive.dispatchRequest(new TinyRequest(idProvider), serverTwoDescriptor));
-    assertTrue(clientFour.dispatchRequest(new TinyRequest(idProvider), serverTwoDescriptor));
+    assertTrue(clientFour.dispatchRequest(new TinyRequest(idProvider, ExchangeType.NORMAL),
+        serverTwoDescriptor));
+    assertTrue(clientFive.dispatchRequest(new TinyRequest(idProvider, ExchangeType.NORMAL),
+        serverTwoDescriptor));
+    assertTrue(clientFour.dispatchRequest(new TinyRequest(idProvider, ExchangeType.NORMAL),
+        serverTwoDescriptor));
 
     final long expectedServerOneResponses = 5L;
     waitMillis = 50L;
@@ -381,7 +387,8 @@ public final class TinyTCPTest {
     // Push multiple requests to server
     final int requestsSent = 5;
     for (int iter = 0; iter < requestsSent; iter++) {
-      assertTrue(client.dispatchRequest(new TinyRequest(idProvider), serverDescriptor));
+      assertTrue(client.dispatchRequest(new TinyRequest(idProvider, ExchangeType.NORMAL),
+          serverDescriptor));
     }
 
     // Check that the server processed all requests
@@ -421,6 +428,7 @@ public final class TinyTCPTest {
      */
 
     // Douse client
+    assertTrue(client.severeConnection(serverDescriptor));
     client.stopClient();
     assertFalse(client.isClientRunning());
     assertFalse(client.isConnected(serverDescriptor));

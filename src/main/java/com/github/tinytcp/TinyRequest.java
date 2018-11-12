@@ -12,18 +12,21 @@ import org.apache.logging.log4j.Logger;
  * 
  * @author gaurav
  */
-public class TinyRequest implements Request {
+public final class TinyRequest implements Request {
   private static final transient Logger logger =
       LogManager.getLogger(TinyRequest.class.getSimpleName());
   // @JsonIgnore
   // private IdProvider idProvider;
 
   private String id;
+  private ExchangeType type;
 
-  public TinyRequest(final IdProvider idProvider) {
+  public TinyRequest(final IdProvider idProvider, final ExchangeType type) {
     Objects.requireNonNull(idProvider, "idProvider cannot be null");
+    Objects.requireNonNull(type, "exchangeType cannot be null");
     // this.idProvider = idProvider;
     this.id = idProvider.id();
+    this.type = type;
   }
 
   @Override
@@ -44,6 +47,11 @@ public class TinyRequest implements Request {
   }
 
   @Override
+  public ExchangeType getType() {
+    return type;
+  }
+
+  @Override
   public Request deserialize(final byte[] flattenedRequest) {
     Request deserializedRequest = null;
     try {
@@ -58,7 +66,7 @@ public class TinyRequest implements Request {
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    builder.append("TinyRequest[id:").append(id).append("]");
+    builder.append("TinyRequest[id:").append(id).append(",type:").append(type).append("]");
     return builder.toString();
   }
 
@@ -67,6 +75,7 @@ public class TinyRequest implements Request {
     final int prime = 31;
     int result = 1;
     result = prime * result + ((id == null) ? 0 : id.hashCode());
+    result = prime * result + ((type == null) ? 0 : type.hashCode());
     return result;
   }
 
@@ -89,15 +98,23 @@ public class TinyRequest implements Request {
     } else if (!id.equals(other.id)) {
       return false;
     }
+    if (type != other.type) {
+      return false;
+    }
     return true;
   }
 
-  // exists to help jackson deserialize
+  // exists to help jackson deserialize; not for use otherwise
   TinyRequest() {}
 
-  // exists to help jackson deserialize
+  // exists to help jackson deserialize; not for use otherwise
   void setId(final String id) {
     this.id = id;
+  }
+
+  // exists to help jackson deserialize; not for use otherwise
+  void setType(final ExchangeType type) {
+    this.type = type;
   }
 
 }

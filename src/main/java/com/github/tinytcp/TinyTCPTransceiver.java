@@ -91,8 +91,8 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
 
   private EventLoopGroup clientThreads;
 
-  private TinyTCPStateHandler serverStateHandler;
-  private TinyTCPStateHandler clientStateHandler;
+  // private TinyTCPStateHandler serverStateHandler;
+  // private TinyTCPStateHandler clientStateHandler;
 
   // TODO: use a builder
   private final AtomicLong allRequestsSent = new AtomicLong();
@@ -160,7 +160,7 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
         return thread;
       }
     });
-    serverStateHandler = new TinyTCPStateHandler(serverId, Type.SERVER);
+    // serverStateHandler = new TinyTCPStateHandler(serverId, Type.SERVER);
     InternalLoggerFactory.setDefaultFactory(Log4J2LoggerFactory.INSTANCE);
     final ServerBootstrap serverBootstrap = new ServerBootstrap();
     serverBootstrap.group(eventLoopThreads, workerThreads).channel(NioServerSocketChannel.class)
@@ -172,12 +172,12 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
 
             // final ConnectionMetricHandler connectionMetricHandler = new ConnectionMetricHandler(
             // currentActiveConnections, allAcceptedConnections, allConnectionIdleTimeouts);
-            pipeline.addLast(new IdleStateHandler(120, 120, 0));
+            pipeline.addLast(new IdleStateHandler(60, 60, 0));
             // pipeline.addLast(connectionMetricHandler);
-            pipeline.addLast(new ReadTimeoutHandler(60000L, TimeUnit.MILLISECONDS));
-            pipeline.addLast(new WriteTimeoutHandler(60000L, TimeUnit.MILLISECONDS));
+            pipeline.addLast(new ReadTimeoutHandler(120L, TimeUnit.SECONDS));
+            pipeline.addLast(new WriteTimeoutHandler(120L, TimeUnit.SECONDS));
             pipeline.addLast(new TinyTCPServerHandler());
-            pipeline.addLast(serverStateHandler);
+            pipeline.addLast(new TinyTCPStateHandler(serverId, Type.SERVER, idProvider));
           }
         });
 
@@ -257,7 +257,8 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
   }
 
   protected Response serviceRequestInternal(final Request request) {
-    final Response response = new TinyResponse(idProvider, Optional.ofNullable(request.getId()));
+    final Response response =
+        new TinyResponse(idProvider, Optional.ofNullable(request.getId()), ExchangeType.NORMAL);
     return response;
   }
 
@@ -274,7 +275,8 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
       allServerRequests.incrementAndGet();
       final ByteBuf payload = (ByteBuf) msg;
       final byte[] requestBytes = ByteBufUtil.getBytes(payload);
-      final Request request = new TinyRequest(idProvider).deserialize(requestBytes);
+      final Request request =
+          new TinyRequest(idProvider, ExchangeType.NORMAL).deserialize(requestBytes);
       final SocketAddress client = context.channel().remoteAddress();
       // msg.getClass().getName();
       logger.info("Server[{}] received {} from {}", serverId, request, client);
@@ -378,7 +380,7 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
             return thread;
           }
         });
-        clientStateHandler = new TinyTCPStateHandler(clientId, Type.CLIENT);
+        // clientStateHandler = new TinyTCPStateHandler(clientId, Type.CLIENT);
         clientBootstrap.group(clientThreads).channel(NioSocketChannel.class);
         clientBootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         clientBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
@@ -386,7 +388,8 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
         clientBootstrap.handler(new ChannelInitializer<SocketChannel>() {
           protected void initChannel(SocketChannel socketChannel) throws Exception {
             socketChannel.pipeline().addLast(new TinyTCPClientHandler());
-            socketChannel.pipeline().addLast(clientStateHandler);
+            socketChannel.pipeline()
+                .addLast(new TinyTCPStateHandler(clientId, Type.CLIENT, idProvider));
           }
         });
         Channel clientChannel = null;
@@ -609,8 +612,8 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
         final ByteBuf payload) {
       allResponsesReceived.incrementAndGet();
       final byte[] responseBytes = ByteBufUtil.getBytes(payload);
-      final Response response =
-          new TinyResponse(idProvider, Optional.empty()).deserialize(responseBytes);
+      final Response response = new TinyResponse(idProvider, Optional.empty(), ExchangeType.NORMAL)
+          .deserialize(responseBytes);
       responseHandler.handleResponse(response);
     }
 
