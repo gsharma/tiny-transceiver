@@ -3,5 +3,5 @@
 /.settings
 /.classpath
 /.project
-tinytcp.log
+tinytransceiver.log
 dependency-reduced-pom.xml

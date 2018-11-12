@@ -12,12 +12,16 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.github.tinytcp.TinyTCPStateHandler.Type;
+
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
@@ -54,9 +58,10 @@ public final class TinyTCPServer {
   private int workerThreadCount = 4;
   private final ServerDescriptor serverDescriptor;
 
-  private final AtomicInteger currentActiveConnections = new AtomicInteger();
-  private final AtomicLong allAcceptedConnections = new AtomicLong();
-  private final AtomicLong allConnectionIdleTimeouts = new AtomicLong();
+  // private final AtomicInteger currentActiveConnections = new AtomicInteger();
+  // private final AtomicLong allAcceptedConnections = new AtomicLong();
+  // private final AtomicLong allConnectionIdleTimeouts = new AtomicLong();
+
   private final AtomicLong allRequestsReceived = new AtomicLong();
   private final AtomicLong allResponsesSent = new AtomicLong();
 
@@ -71,7 +76,7 @@ public final class TinyTCPServer {
   // just don't mess with the lifecycle methods
   public synchronized void start() {
     final long startNanos = System.nanoTime();
-    logger.info("Starting tiny tcp server[{}] at {}", id, serverDescriptor);
+    logger.info("Starting server[{}] at {}", id, serverDescriptor);
     eventLoopThreads = new NioEventLoopGroup(eventLoopThreadCount, new ThreadFactory() {
       private final AtomicInteger threadCounter = new AtomicInteger();
 
@@ -113,14 +118,14 @@ public final class TinyTCPServer {
           public void initChannel(final Channel channel) throws Exception {
             final ChannelPipeline pipeline = channel.pipeline();
 
-            final ConnectionMetricHandler connectionMetricHandler = new ConnectionMetricHandler(
-                currentActiveConnections, allAcceptedConnections, allConnectionIdleTimeouts);
+            // final ConnectionMetricHandler connectionMetricHandler = new ConnectionMetricHandler(
+            // currentActiveConnections, allAcceptedConnections, allConnectionIdleTimeouts);
             pipeline.addLast(new IdleStateHandler(120, 120, 0));
-            pipeline.addLast(connectionMetricHandler);
-            pipeline.addLast(new ReadTimeoutHandler(15000L, TimeUnit.MILLISECONDS));
-            pipeline.addLast(new WriteTimeoutHandler(15000L, TimeUnit.MILLISECONDS));
+            // pipeline.addLast(connectionMetricHandler);
+            pipeline.addLast(new ReadTimeoutHandler(60000L, TimeUnit.MILLISECONDS));
+            pipeline.addLast(new WriteTimeoutHandler(60000L, TimeUnit.MILLISECONDS));
             pipeline.addLast(new TinyTCPServerHandler());
-            pipeline.addLast(new PipelineExceptionHandler());
+            pipeline.addLast(new TinyTCPStateHandler(id, Type.SERVER));
           }
         });
 
@@ -140,11 +145,41 @@ public final class TinyTCPServer {
     final long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
     if (isChannelHealthy(serverChannel)) {
       running = true;
-      logger.info("Started tiny tcp server[{}] at {} in {} millis", id,
-          serverChannel.localAddress(), elapsedMillis);
-    } else {
-      logger.info("Failed to start tiny tcp server[{}] at {} in {} millis", id, serverDescriptor,
+      // new ServerSentinel(5L, serverChannel).start();
+      logger.info("Started server[{}] at {} in {} millis", id, serverChannel.localAddress(),
           elapsedMillis);
+    } else {
+      logger.info("Failed to start server[{}] at {} in {} millis", id, serverDescriptor,
+          elapsedMillis);
+    }
+  }
+
+  @SuppressWarnings("unused")
+  private final class ServerSentinel extends Thread {
+    private final long sleepSeconds;
+    private final Channel monitoredChannel;
+
+    private ServerSentinel(final long sleepSeconds, final Channel monitoredChannel) {
+      setDaemon(true);
+      setName("server-sentinel");
+      this.sleepSeconds = sleepSeconds;
+      this.monitoredChannel = monitoredChannel;
+    }
+
+    @Override
+    public void run() {
+      while (!interrupted()) {
+        if (!isChannelHealthy(monitoredChannel)) {
+          logger.error("Server[{}] channel is not healthy", id);
+        } else {
+          logger.info("Server[{}] channel is healthy", id);
+        }
+        try {
+          sleep(TimeUnit.SECONDS.toMillis(sleepSeconds));
+        } catch (InterruptedException e) {
+          interrupt();
+        }
+      }
     }
   }
 
@@ -154,9 +189,7 @@ public final class TinyTCPServer {
     if (!running) {
       logger.info("Cannot stop an already stopped server[{}]", id);
     }
-    logger.info(
-        "Stopping tiny tcp server[{}] at {} [allAcceptedConnections:{},allRequestsReceived:{}]", id,
-        serverChannel.localAddress(), allAcceptedConnections.get(), allRequestsReceived.get());
+    logger.info("Stopping server[{}] at {}", id, serverChannel.localAddress());
     try {
       if (serverChannel != null) {
         serverChannel.close().await();
@@ -171,18 +204,16 @@ public final class TinyTCPServer {
         serverChannel.closeFuture().await();
       }
     } catch (InterruptedException problem) {
-      logger.error(
-          "Encountered a problem while stopping tiny tcp server at " + serverChannel.localAddress(),
+      logger.error("Encountered a problem while stopping server at " + serverChannel.localAddress(),
           problem);
     }
     running = false;
     final long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
-    logger.info("Stopped tiny tcp server[{}] at {} in {} millis", id, serverDescriptor,
-        elapsedMillis);
+    logger.info("Stopped server[{}] at {} in {} millis", id, serverDescriptor, elapsedMillis);
   }
 
   private boolean isChannelHealthy(final Channel channel) {
-    return channel != null && channel.isOpen() && channel.isActive();
+    return channel != null && channel.isOpen() && channel.isActive() && channel.isWritable();
   }
 
   public boolean isRunning() {
@@ -215,10 +246,9 @@ public final class TinyTCPServer {
   public class TinyTCPServerHandler extends ChannelInboundHandlerAdapter {
 
     @Override
-    public void channelRead(final ChannelHandlerContext context, final Object msg)
-        throws Exception {
+    public void channelRead(final ChannelHandlerContext context, final Object msg) {
       final long startNanos = System.nanoTime();
-      allRequestsReceived.incrementAndGet();
+      // allRequestsReceived.incrementAndGet();
       final ByteBuf payload = (ByteBuf) msg;
       final byte[] requestBytes = ByteBufUtil.getBytes(payload);
       final Request request = new TinyRequest(idProvider).deserialize(requestBytes);
@@ -229,30 +259,27 @@ public final class TinyTCPServer {
       final Response response = serviceRequest(request);
       final byte[] serializedResponse = response.serialize();
 
-      context.write(Unpooled.copiedBuffer(serializedResponse));
       allResponsesSent.incrementAndGet();
       final long elapsedMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - startNanos);
       logger.info("Server[{}] responded to client {} with {} in {} micros", id, client, response,
           elapsedMicros);
-    }
+      final ChannelFuture future = context.write(Unpooled.copiedBuffer(serializedResponse));
+      future.addListener(new ChannelFutureListener() {
 
-    @Override
-    public void channelReadComplete(final ChannelHandlerContext context) throws Exception {
-      logger.info("Server[{}] channel read complete", id);
-      context.flush();
-    }
-
-    @Override
-    public void exceptionCaught(final ChannelHandlerContext context, final Throwable cause)
-        throws Exception {
-      logger.error(cause);
-      context.close();
-    }
-
-    @Override
-    public void channelWritabilityChanged(ChannelHandlerContext context) throws Exception {
-      logger.info("Server[{}] channel writability changed", id);
-      context.fireChannelWritabilityChanged();
+        @Override
+        public void operationComplete(final ChannelFuture future) throws Exception {
+          if (future.isSuccess()) {
+            logger.info("Server[{}] write succeeded", id);
+            if (logger.isDebugEnabled()) {
+              logger.debug("Server[{}] write succeeded", id);
+            }
+          } else {
+            logger.error(String.format("Server[%s] encountered error", id), future.cause());
+            future.cause().printStackTrace();
+          }
+        }
+      });
+      return;
     }
 
   }

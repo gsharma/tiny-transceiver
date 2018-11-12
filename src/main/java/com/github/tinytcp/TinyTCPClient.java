@@ -3,6 +3,7 @@ package com.github.tinytcp;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,10 +14,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import com.github.tinytcp.TinyTCPStateHandler.Type;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -25,6 +29,7 @@ import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -48,6 +53,7 @@ public final class TinyTCPClient {
 
   private final ReentrantReadWriteLock superLock = new ReentrantReadWriteLock(true);
   private final WriteLock writeLock = superLock.writeLock();
+  private final ReadLock readLock = superLock.readLock();
 
   private final AtomicBoolean running = new AtomicBoolean();
   private final ConcurrentMap<ServerDescriptor, Channel> trackedServers = new ConcurrentHashMap<>();
@@ -67,13 +73,13 @@ public final class TinyTCPClient {
     Objects.requireNonNull(idProvider, "idProvider cannot be null");
     this.idProvider = idProvider;
     this.id = idProvider.id();
-    running.set(true);;
-    logger.info("Started tiny tcp client[{}]", id);
+    running.set(true);
+    logger.info("Started client[{}]", id);
   }
 
   public void establishConnections(final List<ServerDescriptor> serverDescriptors) {
     if (!running.get()) {
-      logger.info("Cannot establish connections with a stopped tiny tcp client[{}]", id);
+      logger.info("Cannot establish connections with a stopped client[{}]", id);
       return;
     }
     if (writeLock.tryLock()) {
@@ -93,7 +99,7 @@ public final class TinyTCPClient {
   public boolean establishConnection(final ServerDescriptor serverDescriptor) {
     boolean success = false;
     if (!running.get()) {
-      logger.info("Cannot establish connections with a stopped tiny tcp client[{}]", id);
+      logger.info("Cannot establish connections with a stopped client[{}]", id);
       return success;
     }
     Objects.requireNonNull(serverDescriptor, "serverDescriptor cannot be null");
@@ -106,7 +112,7 @@ public final class TinyTCPClient {
     if (writeLock.tryLock()) {
       try {
         final long startNanos = System.nanoTime();
-        logger.info("Establishing tiny tcp client[{}] connection to {}", id, serverDescriptor);
+        logger.info("Establishing client[{}] connection to {}", id, serverDescriptor);
         // TODO: local client
         final boolean localClient = serverDescriptor.connectLocally();
         InternalLoggerFactory.setDefaultFactory(Log4J2LoggerFactory.INSTANCE);
@@ -134,6 +140,7 @@ public final class TinyTCPClient {
         clientBootstrap.handler(new ChannelInitializer<SocketChannel>() {
           protected void initChannel(SocketChannel socketChannel) throws Exception {
             socketChannel.pipeline().addLast(new TinyTCPClientHandler());
+            socketChannel.pipeline().addLast(new TinyTCPStateHandler(id, Type.CLIENT));
           }
         });
         Channel clientChannel = null;
@@ -149,10 +156,10 @@ public final class TinyTCPClient {
         if (isChannelHealthy(clientChannel)) {
           trackedServers.put(serverDescriptor, clientChannel);
           success = true;
-          logger.info("Established tiny tcp client[{}] connection to {} in {} millis", id,
+          logger.info("Established client[{}] connection to {} in {} millis", id,
               clientChannel.remoteAddress(), elapsedMillis);
         } else {
-          logger.info("Failed to establish tiny tcp client[{}] connection to {} in {} millis", id,
+          logger.info("Failed to establish client[{}] connection to {} in {} millis", id,
               serverDescriptor, elapsedMillis);
         }
       } finally {
@@ -170,7 +177,7 @@ public final class TinyTCPClient {
   public boolean severeConnection(final ServerDescriptor serverDescriptor) {
     boolean success = false;
     if (!running.get()) {
-      logger.info("Cannot severe connections for a stopped tiny tcp client[{}]", id);
+      logger.info("Cannot severe connections for a stopped client[{}]", id);
       return success;
     }
     if (writeLock.tryLock()) {
@@ -180,7 +187,7 @@ public final class TinyTCPClient {
           try {
             final Channel clientChannel = trackedServers.get(serverDescriptor);
             logger.info(
-                "Severing tiny tcp client[{}] connection to {} [allRequestsSent:{},allResponsesReceived:{}]",
+                "Severing client[{}] connection to {} [allRequestsSent:{},allResponsesReceived:{}]",
                 id, clientChannel.remoteAddress(), allRequestsSent.get(),
                 allResponsesReceived.get());
             if (clientChannel != null) {
@@ -196,7 +203,7 @@ public final class TinyTCPClient {
             success = true;
             final long elapsedMillis =
                 TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
-            logger.info("Severed tiny tcp client[{}] connection to {} in {} millis", id,
+            logger.info("Severed client[{}] connection to {} in {} millis", id,
                 clientChannel.remoteAddress(), elapsedMillis);
           } catch (InterruptedException problem) {
             logger.error("Encountered a problem while severing connection to " + serverDescriptor,
@@ -215,7 +222,7 @@ public final class TinyTCPClient {
 
   public void severeConnections(final List<ServerDescriptor> serverDescriptors) {
     if (!running.get()) {
-      logger.info("Cannot severe connections for a stopped tiny tcp client[{}]", id);
+      logger.info("Cannot severe connections for a stopped client[{}]", id);
       return;
     }
     if (serverDescriptors != null && !serverDescriptors.isEmpty()) {
@@ -228,15 +235,15 @@ public final class TinyTCPClient {
 
   // no messing with the lifecycle
   public void stop() {
-    // logger.info("Stopping tiny tcp client[{}]", id);
+    // logger.info("Stopping client[{}]", id);
     if (!running.get()) {
-      logger.info("Cannot stop an already stopped tiny tcp client[{}]", id);
+      logger.info("Cannot stop an already stopped client[{}]", id);
     }
     for (final ServerDescriptor serverDescriptor : trackedServers.keySet()) {
       severeConnection(serverDescriptor);
     }
     running.set(false);
-    logger.info("Stopped tiny tcp client[{}]", id);
+    logger.info("Stopped client[{}]", id);
   }
 
   private static boolean isChannelHealthy(final Channel channel) {
@@ -265,11 +272,66 @@ public final class TinyTCPClient {
     allRequestsSent.incrementAndGet();
     logger.info("Client[{}] sending to server {}", id, request);
     final byte[] serializedRequest = request.serialize();
-    final ChannelFuture future =
-        clientChannel.writeAndFlush(Unpooled.copiedBuffer(serializedRequest));
+    final ChannelFuture future = clientChannel.write(Unpooled.copiedBuffer(serializedRequest));
+    future.addListener(new ChannelFutureListener() {
+
+      @Override
+      public void operationComplete(final ChannelFuture future) throws Exception {
+        if (future.isSuccess()) {
+          logger.info("Client[{}] write succeeded", id);
+          if (logger.isDebugEnabled()) {
+            logger.debug("Client[{}] write succeeded", id);
+          }
+        } else {
+          logger.error(String.format("Client[%s] encountered error", id), future.cause());
+          future.cause().printStackTrace();
+        }
+      }
+    });
     future.awaitUninterruptibly();
     return future.isDone();
   }
+
+  final class FlusherDaemon extends Thread {
+    private final long sleepMillis;
+
+    FlusherDaemon(final long sleepMillis) {
+      setName("request-flusher");
+      setDaemon(true);
+      this.sleepMillis = sleepMillis;
+    }
+
+    @Override
+    public void run() {
+      while (!interrupted()) {
+        if (readLock.tryLock()) {
+          try {
+            for (final Map.Entry<ServerDescriptor, Channel> trackedServer : trackedServers
+                .entrySet()) {
+              try {
+                final Channel channel = trackedServer.getValue();
+                final ServerDescriptor server = trackedServer.getKey();
+                if (channel.isWritable()) {
+                  // logger.info("Client[{}] flushing {} requests to {}", id, pendingRequests.get(),
+                  // server);
+                  channel.flush();
+                }
+              } catch (Exception problem) {
+                logger.error("Encountered problem while flushing channel to server", problem);
+              }
+            }
+          } finally {
+            readLock.unlock();
+          }
+        }
+        try {
+          sleep(sleepMillis);
+        } catch (InterruptedException e) {
+          interrupt();
+        }
+      }
+    }
+  };
 
   // TODO: externalize
   public void handleServerResponse(final Response response) {
@@ -284,11 +346,6 @@ public final class TinyTCPClient {
   public class TinyTCPClientHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
     @Override
-    public void channelActive(final ChannelHandlerContext channelHandlerContext) {
-      logger.info("Client[{}] is active", id);
-    }
-
-    @Override
     public void channelRead0(final ChannelHandlerContext channelHandlerContext,
         final ByteBuf payload) {
       allResponsesReceived.incrementAndGet();
@@ -296,13 +353,6 @@ public final class TinyTCPClient {
       final Response response =
           new TinyResponse(idProvider, Optional.empty()).deserialize(responseBytes);
       handleServerResponse(response);
-    }
-
-    @Override
-    public void exceptionCaught(final ChannelHandlerContext channelHandlerContext,
-        final Throwable cause) {
-      logger.error(cause);
-      channelHandlerContext.close();
     }
 
   }

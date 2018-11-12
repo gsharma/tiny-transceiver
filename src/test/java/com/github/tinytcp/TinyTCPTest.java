@@ -312,7 +312,7 @@ public final class TinyTCPTest {
   public void test1Client1Server() throws Exception {
     // Fire up the server
     final String serverHost = "localhost";
-    final int serverPort = 9999;
+    final int serverPort = 7500;
     final ServerDescriptor serverDescriptor = new ServerDescriptor(serverHost, serverPort, false);
     final TinyTCPServer server = new TinyTCPServer(idProvider, serverDescriptor);
     Thread serverThread = new Thread() {
@@ -357,7 +357,7 @@ public final class TinyTCPTest {
       }
     };
     clientThread.start();
-    waitMillis = 50L;
+    waitMillis = 100L;
     spinCounter = 0;
     while (!client.isConnectionEstablished(serverDescriptor)) {
       spinCounter++;
@@ -371,14 +371,14 @@ public final class TinyTCPTest {
     assertTrue(client.isConnectionEstablished(serverDescriptor));
 
     // Push multiple requests to server
-    int requestsSent = 2;
+    final int requestsSent = 5;
     for (int iter = 0; iter < requestsSent; iter++) {
       assertTrue(client.sendToServer(serverDescriptor, new TinyRequest(idProvider)));
     }
 
     // Check that the server processed all requests
     long expectedServerResponses = requestsSent;
-    waitMillis = 500L;
+    waitMillis = 200L;
     spinCounter = 0;
     while (expectedServerResponses != server.getAllResponsesSent()) {
       spinCounter++;
@@ -397,27 +397,20 @@ public final class TinyTCPTest {
 
     // All good so far; let's repeat with dropping connection, connection re-establishment and a few
     // more requests
-    assertTrue(client.severeConnection(serverDescriptor));
-    assertTrue(client.establishConnection(serverDescriptor));
-    for (int iter = 0; iter < requestsSent; iter++) {
-      assertTrue(client.sendToServer(serverDescriptor, new TinyRequest(idProvider)));
-    }
-    spinCounter = 0;
-    expectedServerResponses += requestsSent;
-    while (expectedServerResponses != server.getAllResponsesSent()) {
-      spinCounter++;
-      if (spinCounter > spinsAllowed) {
-        logger.error("Failed to receive all expectedServerResponses:{} after {} spins",
-            expectedServerResponses, spinsAllowed);
-        break;
-      }
-      logger.info(
-          "Waiting {} millis for receiving all expectedServerResponses:{}, serverReceived:{}, serverResponses:{}",
-          waitMillis, expectedServerResponses, server.getAllRequestsReceived(),
-          server.getAllResponsesSent());
-      Thread.sleep(waitMillis);
-    }
-    assertEquals(expectedServerResponses, server.getAllResponsesSent());
+    /*
+     * assertTrue(client.severeConnection(serverDescriptor));
+     * assertTrue(client.establishConnection(serverDescriptor)); for (int iter = 0; iter <
+     * requestsSent; iter++) { assertTrue(client.sendToServer(serverDescriptor, new
+     * TinyRequest(idProvider))); } spinCounter = 0; expectedServerResponses += requestsSent; while
+     * (expectedServerResponses != server.getAllResponsesSent()) { spinCounter++; if (spinCounter >
+     * spinsAllowed) {
+     * logger.error("Failed to receive all expectedServerResponses:{} after {} spins",
+     * expectedServerResponses, spinsAllowed); break; } logger.info(
+     * "Waiting {} millis for receiving all expectedServerResponses:{}, serverReceived:{}, serverResponses:{}"
+     * , waitMillis, expectedServerResponses, server.getAllRequestsReceived(),
+     * server.getAllResponsesSent()); Thread.sleep(waitMillis); }
+     * assertEquals(expectedServerResponses, server.getAllResponsesSent());
+     */
 
     // Douse client
     client.stop();
