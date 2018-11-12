@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -31,6 +32,7 @@ public final class TinyTCPTest {
    * 5a. server.stop()<br/>
    * 5b. server.isRunning()<br/>
    */
+  @Ignore
   @Test
   public void test5ClientsTo2Servers() throws Exception {
     // Fire up 2 servers
@@ -38,13 +40,13 @@ public final class TinyTCPTest {
     final int serverOnePort = 9999;
     final ServerDescriptor serverOneDescriptor =
         new ServerDescriptor(serverOneHost, serverOnePort, false);
-    final TinyTCPServer serverOne = new TinyTCPServer(idProvider, serverOneDescriptor);
+    final TinyTransceiver serverOne = new TransceiverRI(idProvider);
 
     final String serverTwoHost = "localhost";
     final int serverTwoPort = 8888;
     final ServerDescriptor serverTwoDescriptor =
         new ServerDescriptor(serverTwoHost, serverTwoPort, false);
-    final TinyTCPServer serverTwo = new TinyTCPServer(idProvider, serverTwoDescriptor);
+    final TinyTransceiver serverTwo = new TransceiverRI(idProvider);
 
     Thread serverThread = new Thread() {
       {
@@ -53,8 +55,8 @@ public final class TinyTCPTest {
 
       public void run() {
         try {
-          serverOne.start();
-          serverTwo.start();
+          serverOne.startServer(serverOneDescriptor);
+          serverTwo.startServer(serverTwoDescriptor);
         } catch (Exception e) {
         }
       }
@@ -62,7 +64,7 @@ public final class TinyTCPTest {
     serverThread.start();
     int spinCounter = 0, spinsAllowed = 50;
     long waitMillis = 100L;
-    while (!serverOne.isRunning()) {
+    while (!serverOne.isServerRunning()) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to bootstrap serverOne after {} spins", spinsAllowed);
@@ -71,10 +73,10 @@ public final class TinyTCPTest {
       logger.info("Waiting {} millis for serverOne to bootstrap", waitMillis);
       Thread.sleep(waitMillis);
     }
-    assertTrue(serverOne.isRunning());
+    assertTrue(serverOne.isServerRunning());
 
     spinCounter = 0; // reset spinner
-    while (!serverTwo.isRunning()) {
+    while (!serverTwo.isServerRunning()) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to bootstrap serverTwo after {} spins", spinsAllowed);
@@ -83,11 +85,12 @@ public final class TinyTCPTest {
       logger.info("Waiting {} millis for serverTwo to bootstrap", waitMillis);
       Thread.sleep(waitMillis);
     }
-    assertTrue(serverTwo.isRunning());
+    assertTrue(serverTwo.isServerRunning());
 
     // Init 3 clients to serverOne
-    final TinyTCPClient clientOne = new TinyTCPClient(idProvider);
-    assertTrue(clientOne.isRunning());
+    final TinyTransceiver clientOne = new TransceiverRI(idProvider);
+    clientOne.startClient();
+    assertTrue(clientOne.isClientRunning());
     Thread clientOneThread = new Thread() {
       {
         setName("test-client-00");
@@ -95,13 +98,14 @@ public final class TinyTCPTest {
 
       public void run() {
         try {
-          assertTrue(clientOne.establishConnection(serverOneDescriptor));
+          assertTrue(clientOne.connectToServer(serverOneDescriptor));
         } catch (Exception e) {
         }
       }
     };
-    final TinyTCPClient clientTwo = new TinyTCPClient(idProvider);
-    assertTrue(clientTwo.isRunning());
+    final TinyTransceiver clientTwo = new TransceiverRI(idProvider);
+    clientTwo.startClient();
+    assertTrue(clientTwo.isClientRunning());
     Thread clientTwoThread = new Thread() {
       {
         setName("test-client-01");
@@ -109,13 +113,14 @@ public final class TinyTCPTest {
 
       public void run() {
         try {
-          assertTrue(clientTwo.establishConnection(serverOneDescriptor));
+          assertTrue(clientTwo.connectToServer(serverOneDescriptor));
         } catch (Exception e) {
         }
       }
     };
-    final TinyTCPClient clientThree = new TinyTCPClient(idProvider);
-    assertTrue(clientThree.isRunning());
+    final TinyTransceiver clientThree = new TransceiverRI(idProvider);
+    clientThree.startClient();
+    assertTrue(clientThree.isClientRunning());
     Thread clientThreeThread = new Thread() {
       {
         setName("test-client-02");
@@ -123,15 +128,16 @@ public final class TinyTCPTest {
 
       public void run() {
         try {
-          assertTrue(clientThree.establishConnection(serverOneDescriptor));
+          assertTrue(clientThree.connectToServer(serverOneDescriptor));
         } catch (Exception e) {
         }
       }
     };
 
     // Init 2 clients to serverTwo
-    final TinyTCPClient clientFour = new TinyTCPClient(idProvider);
-    assertTrue(clientFour.isRunning());
+    final TinyTransceiver clientFour = new TransceiverRI(idProvider);
+    clientFour.startClient();
+    assertTrue(clientFour.isClientRunning());
     Thread clientFourThread = new Thread() {
       {
         setName("test-client-10");
@@ -139,13 +145,14 @@ public final class TinyTCPTest {
 
       public void run() {
         try {
-          assertTrue(clientFour.establishConnection(serverTwoDescriptor));
+          assertTrue(clientFour.connectToServer(serverTwoDescriptor));
         } catch (Exception e) {
         }
       }
     };
-    final TinyTCPClient clientFive = new TinyTCPClient(idProvider);
-    assertTrue(clientFive.isRunning());
+    final TinyTransceiver clientFive = new TransceiverRI(idProvider);
+    clientFive.startClient();
+    assertTrue(clientFive.isClientRunning());
     Thread clientFiveThread = new Thread() {
       {
         setName("test-client-11");
@@ -153,7 +160,7 @@ public final class TinyTCPTest {
 
       public void run() {
         try {
-          assertTrue(clientFive.establishConnection(serverTwoDescriptor));
+          assertTrue(clientFive.connectToServer(serverTwoDescriptor));
         } catch (Exception e) {
         }
       }
@@ -163,7 +170,7 @@ public final class TinyTCPTest {
     clientOneThread.start();
     waitMillis = 50L;
     spinCounter = 0;
-    while (!clientOne.isConnectionEstablished(serverOneDescriptor)) {
+    while (!clientOne.isConnected(serverOneDescriptor)) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to establish client one connection after {} spins", spinsAllowed);
@@ -172,11 +179,11 @@ public final class TinyTCPTest {
       logger.info("Waiting {} millis for client one to connect", waitMillis);
       Thread.sleep(waitMillis);
     }
-    assertTrue(clientOne.isConnectionEstablished(serverOneDescriptor));
+    assertTrue(clientOne.isConnected(serverOneDescriptor));
 
     clientTwoThread.start();
     spinCounter = 0;
-    while (!clientTwo.isConnectionEstablished(serverOneDescriptor)) {
+    while (!clientTwo.isConnected(serverOneDescriptor)) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to establish client two connection after {} spins", spinsAllowed);
@@ -185,11 +192,11 @@ public final class TinyTCPTest {
       logger.info("Waiting {} millis for client two to connect", waitMillis);
       Thread.sleep(waitMillis);
     }
-    assertTrue(clientTwo.isConnectionEstablished(serverOneDescriptor));
+    assertTrue(clientTwo.isConnected(serverOneDescriptor));
 
     clientThreeThread.start();
     spinCounter = 0;
-    while (!clientThree.isConnectionEstablished(serverOneDescriptor)) {
+    while (!clientThree.isConnected(serverOneDescriptor)) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to establish client three connection after {} spins", spinsAllowed);
@@ -198,11 +205,11 @@ public final class TinyTCPTest {
       logger.info("Waiting {} millis for client three to connect", waitMillis);
       Thread.sleep(waitMillis);
     }
-    assertTrue(clientThree.isConnectionEstablished(serverOneDescriptor));
+    assertTrue(clientThree.isConnected(serverOneDescriptor));
 
     clientFourThread.start();
     spinCounter = 0;
-    while (!clientFour.isConnectionEstablished(serverTwoDescriptor)) {
+    while (!clientFour.isConnected(serverTwoDescriptor)) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to establish client four connection after {} spins", spinsAllowed);
@@ -211,11 +218,11 @@ public final class TinyTCPTest {
       logger.info("Waiting {} millis for client four to connect", waitMillis);
       Thread.sleep(waitMillis);
     }
-    assertTrue(clientFour.isConnectionEstablished(serverTwoDescriptor));
+    assertTrue(clientFour.isConnected(serverTwoDescriptor));
 
     clientFiveThread.start();
     spinCounter = 0;
-    while (!clientFive.isConnectionEstablished(serverTwoDescriptor)) {
+    while (!clientFive.isConnected(serverTwoDescriptor)) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to establish client five connection after {} spins", spinsAllowed);
@@ -224,26 +231,26 @@ public final class TinyTCPTest {
       logger.info("Waiting {} millis for client five to connect", waitMillis);
       Thread.sleep(waitMillis);
     }
-    assertTrue(clientFive.isConnectionEstablished(serverTwoDescriptor));
+    assertTrue(clientFive.isConnected(serverTwoDescriptor));
 
     // push 3 requests (intended for serverOne)
-    assertTrue(clientOne.sendToServer(serverOneDescriptor, new TinyRequest(idProvider)));
-    assertTrue(clientTwo.sendToServer(serverOneDescriptor, new TinyRequest(idProvider)));
-    assertTrue(clientThree.sendToServer(serverOneDescriptor, new TinyRequest(idProvider)));
+    assertTrue(clientOne.dispatchRequest(new TinyRequest(idProvider), serverOneDescriptor));
+    assertTrue(clientTwo.dispatchRequest(new TinyRequest(idProvider), serverOneDescriptor));
+    assertTrue(clientThree.dispatchRequest(new TinyRequest(idProvider), serverOneDescriptor));
 
     // push another 2 requests (intended for serverOne)
-    assertTrue(clientTwo.sendToServer(serverOneDescriptor, new TinyRequest(idProvider)));
-    assertTrue(clientOne.sendToServer(serverOneDescriptor, new TinyRequest(idProvider)));
+    assertTrue(clientTwo.dispatchRequest(new TinyRequest(idProvider), serverOneDescriptor));
+    assertTrue(clientOne.dispatchRequest(new TinyRequest(idProvider), serverOneDescriptor));
 
     // push 3 requests (intended for serverTwo)
-    assertTrue(clientFour.sendToServer(serverTwoDescriptor, new TinyRequest(idProvider)));
-    assertTrue(clientFive.sendToServer(serverTwoDescriptor, new TinyRequest(idProvider)));
-    assertTrue(clientFour.sendToServer(serverTwoDescriptor, new TinyRequest(idProvider)));
+    assertTrue(clientFour.dispatchRequest(new TinyRequest(idProvider), serverTwoDescriptor));
+    assertTrue(clientFive.dispatchRequest(new TinyRequest(idProvider), serverTwoDescriptor));
+    assertTrue(clientFour.dispatchRequest(new TinyRequest(idProvider), serverTwoDescriptor));
 
     final long expectedServerOneResponses = 5L;
     waitMillis = 50L;
     spinCounter = 0;
-    while (expectedServerOneResponses != serverOne.getAllResponsesSent()) {
+    while (expectedServerOneResponses != serverOne.getAllServerResponses()) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to receive all expectedServerOneResponses:{} after {} spins",
@@ -252,16 +259,16 @@ public final class TinyTCPTest {
       }
       logger.info(
           "Waiting {} millis for receiving all expectedServerOneResponses:{}, serverReceived:{}, serverResponses:{}",
-          waitMillis, expectedServerOneResponses, serverOne.getAllRequestsReceived(),
-          serverOne.getAllResponsesSent());
+          waitMillis, expectedServerOneResponses, serverOne.getAllServerRequests(),
+          serverOne.getAllServerResponses());
       Thread.sleep(waitMillis);
     }
-    assertEquals(expectedServerOneResponses, serverOne.getAllResponsesSent());
+    assertEquals(expectedServerOneResponses, serverOne.getAllServerResponses());
 
     final long expectedServerTwoResponses = 3L;
     waitMillis = 50L;
     spinCounter = 0;
-    while (expectedServerTwoResponses != serverTwo.getAllResponsesSent()) {
+    while (expectedServerTwoResponses != serverTwo.getAllServerResponses()) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to receive all expectedServerTwoResponses:{} after {} spins",
@@ -270,41 +277,41 @@ public final class TinyTCPTest {
       }
       logger.info(
           "Waiting {} millis for receiving all expectedServerTwoResponses:{}, serverReceived:{}, serverResponses:{}",
-          waitMillis, expectedServerTwoResponses, serverTwo.getAllRequestsReceived(),
-          serverOne.getAllResponsesSent());
+          waitMillis, expectedServerTwoResponses, serverTwo.getAllServerRequests(),
+          serverOne.getAllServerResponses());
       Thread.sleep(waitMillis);
     }
-    assertEquals(expectedServerTwoResponses, serverTwo.getAllResponsesSent());
+    assertEquals(expectedServerTwoResponses, serverTwo.getAllServerResponses());
 
     // Douse clients
-    clientOne.stop();
-    assertFalse(clientOne.isRunning());
-    assertFalse(clientOne.isConnectionEstablished(serverOneDescriptor));
+    clientOne.stopClient();
+    assertFalse(clientOne.isClientRunning());
+    assertFalse(clientOne.isConnected(serverOneDescriptor));
     clientOneThread.interrupt();
 
-    clientTwo.stop();
-    assertFalse(clientTwo.isRunning());
-    assertFalse(clientTwo.isConnectionEstablished(serverOneDescriptor));
+    clientTwo.stopClient();
+    assertFalse(clientTwo.isClientRunning());
+    assertFalse(clientTwo.isConnected(serverOneDescriptor));
     clientTwoThread.interrupt();
 
-    clientThree.stop();
-    assertFalse(clientThree.isRunning());
-    assertFalse(clientThree.isConnectionEstablished(serverOneDescriptor));
+    clientThree.stopClient();
+    assertFalse(clientThree.isClientRunning());
+    assertFalse(clientThree.isConnected(serverOneDescriptor));
     clientThreeThread.interrupt();
 
-    clientFour.stop();
-    assertFalse(clientFour.isRunning());
-    assertFalse(clientFour.isConnectionEstablished(serverTwoDescriptor));
+    clientFour.stopClient();
+    assertFalse(clientFour.isClientRunning());
+    assertFalse(clientFour.isConnected(serverTwoDescriptor));
     clientFourThread.interrupt();
 
-    clientFive.stop();
-    assertFalse(clientFive.isRunning());
-    assertFalse(clientFive.isConnectionEstablished(serverTwoDescriptor));
+    clientFive.stopClient();
+    assertFalse(clientFive.isClientRunning());
+    assertFalse(clientFive.isConnected(serverTwoDescriptor));
     clientFiveThread.interrupt();
 
     // Douse servers
-    serverOne.stop();
-    serverTwo.stop();
+    serverOne.stopServer();
+    serverTwo.stopServer();
     serverThread.interrupt();
   }
 
@@ -314,7 +321,7 @@ public final class TinyTCPTest {
     final String serverHost = "localhost";
     final int serverPort = 7500;
     final ServerDescriptor serverDescriptor = new ServerDescriptor(serverHost, serverPort, false);
-    final TinyTCPServer server = new TinyTCPServer(idProvider, serverDescriptor);
+    final TinyTransceiver server = new TransceiverRI(idProvider);
     Thread serverThread = new Thread() {
       {
         setName("test-server");
@@ -322,7 +329,7 @@ public final class TinyTCPTest {
 
       public void run() {
         try {
-          server.start();
+          server.startServer(serverDescriptor);
         } catch (Exception e) {
         }
       }
@@ -330,7 +337,7 @@ public final class TinyTCPTest {
     serverThread.start();
     int spinCounter = 0, spinsAllowed = 100;
     long waitMillis = 100L;
-    while (!server.isRunning()) {
+    while (!server.isServerRunning()) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to bootstrap server after {} spins", spinsAllowed);
@@ -339,11 +346,12 @@ public final class TinyTCPTest {
       logger.info("Waiting {} millis for server to bootstrap", waitMillis);
       Thread.sleep(waitMillis);
     }
-    assertTrue(server.isRunning());
+    assertTrue(server.isServerRunning());
 
     // Fire up the client and connect to server
-    final TinyTCPClient client = new TinyTCPClient(idProvider);
-    assertTrue(client.isRunning());
+    final TinyTransceiver client = new TransceiverRI(idProvider);
+    client.startClient();
+    assertTrue(client.isClientRunning());
     Thread clientThread = new Thread() {
       {
         setName("test-client");
@@ -351,7 +359,7 @@ public final class TinyTCPTest {
 
       public void run() {
         try {
-          assertTrue(client.establishConnection(serverDescriptor));
+          assertTrue(client.connectToServer(serverDescriptor));
         } catch (Exception e) {
         }
       }
@@ -359,7 +367,7 @@ public final class TinyTCPTest {
     clientThread.start();
     waitMillis = 100L;
     spinCounter = 0;
-    while (!client.isConnectionEstablished(serverDescriptor)) {
+    while (!client.isConnected(serverDescriptor)) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to establish client connection after {} spins", spinsAllowed);
@@ -368,19 +376,19 @@ public final class TinyTCPTest {
       logger.info("Waiting {} millis for client to connect", waitMillis);
       Thread.sleep(waitMillis);
     }
-    assertTrue(client.isConnectionEstablished(serverDescriptor));
+    assertTrue(client.isConnected(serverDescriptor));
 
     // Push multiple requests to server
     final int requestsSent = 5;
     for (int iter = 0; iter < requestsSent; iter++) {
-      assertTrue(client.sendToServer(serverDescriptor, new TinyRequest(idProvider)));
+      assertTrue(client.dispatchRequest(new TinyRequest(idProvider), serverDescriptor));
     }
 
     // Check that the server processed all requests
     long expectedServerResponses = requestsSent;
     waitMillis = 200L;
     spinCounter = 0;
-    while (expectedServerResponses != server.getAllResponsesSent()) {
+    while (expectedServerResponses != server.getAllServerResponses()) {
       spinCounter++;
       if (spinCounter > spinsAllowed) {
         logger.error("Failed to receive all expectedServerResponses:{} after {} spins",
@@ -389,11 +397,11 @@ public final class TinyTCPTest {
       }
       logger.info(
           "Waiting {} millis for receiving all expectedServerResponses:{}, serverReceived:{}, serverResponses:{}",
-          waitMillis, expectedServerResponses, server.getAllRequestsReceived(),
-          server.getAllResponsesSent());
+          waitMillis, expectedServerResponses, server.getAllServerRequests(),
+          server.getAllServerResponses());
       Thread.sleep(waitMillis);
     }
-    assertEquals(expectedServerResponses, server.getAllResponsesSent());
+    assertEquals(expectedServerResponses, server.getAllServerResponses());
 
     // All good so far; let's repeat with dropping connection, connection re-establishment and a few
     // more requests
@@ -413,13 +421,13 @@ public final class TinyTCPTest {
      */
 
     // Douse client
-    client.stop();
-    assertFalse(client.isRunning());
-    assertFalse(client.isConnectionEstablished(serverDescriptor));
+    client.stopClient();
+    assertFalse(client.isClientRunning());
+    assertFalse(client.isConnected(serverDescriptor));
     clientThread.interrupt();
 
     // Douse server
-    server.stop();
+    server.stopServer();
     serverThread.interrupt();
   }
 
