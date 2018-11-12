@@ -385,7 +385,7 @@ public final class TinyTCPTest {
     assertTrue(client.isConnected(serverDescriptor));
 
     // Push multiple requests to server
-    final int requestsSent = 5;
+    final int requestsSent = 2;
     for (int iter = 0; iter < requestsSent; iter++) {
       assertTrue(client.dispatchRequest(new TinyRequest(idProvider, ExchangeType.NORMAL),
           serverDescriptor));
