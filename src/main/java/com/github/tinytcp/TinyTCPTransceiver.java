@@ -216,13 +216,14 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
     logger.info("Stopping server[{}] at {}", serverId, serverChannel.localAddress());
     try {
       if (serverChannel != null) {
+        serverChannel.disconnect();
         serverChannel.close().await();
       }
       if (eventLoopThreads != null) {
-        eventLoopThreads.shutdownGracefully().await();
+        eventLoopThreads.shutdownGracefully(100L, 200L, TimeUnit.MILLISECONDS).await();
       }
       if (workerThreads != null) {
-        workerThreads.shutdownGracefully().await();
+        workerThreads.shutdownGracefully(100L, 200L, TimeUnit.MILLISECONDS).await();
       }
       if (serverChannel != null) {
         serverChannel.closeFuture().await();
@@ -436,14 +437,15 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
                 clientId, clientChannel.remoteAddress(), allRequestsSent.get(),
                 allResponsesReceived.get());
             if (clientChannel != null) {
+              clientChannel.disconnect();
               clientChannel.close().await();
             }
             if (clientThreads != null) {
-              clientThreads.shutdownGracefully().await();
+              clientThreads.shutdownGracefully(100L, 200L, TimeUnit.MILLISECONDS).await();
             }
-            if (clientChannel != null) {
-              clientChannel.closeFuture().await().await();
-            }
+            // if (clientChannel != null) {
+            // clientChannel.closeFuture().await().await();
+            // }
             trackedServers.remove(serverDescriptor);
             success = true;
             final long elapsedMillis =
@@ -498,16 +500,19 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
 
   // no messing with the lifecycle
   @Override
-  public void stopClient() {
+  public synchronized void stopClient() {
+    final long startNanos = System.nanoTime();
     // logger.info("Stopping client[{}]", id);
     if (!clientRunning.get()) {
       logger.info("Cannot stop an already stopped client[{}]", clientId);
     }
+    logger.info("Stopping client[{}]", clientId);
     for (final ServerDescriptor serverDescriptor : trackedServers.keySet()) {
       severeConnection(serverDescriptor);
     }
     clientRunning.set(false);
-    logger.info("Stopped client[{}]", clientId);
+    final long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
+    logger.info("Stopped client[{}] in {} millis", clientId, elapsedMillis);
   }
 
   protected boolean isChannelHealthy(final Channel channel) {
