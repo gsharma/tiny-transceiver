@@ -97,6 +97,25 @@ final class TinyTCPStateHandler extends ChannelDuplexHandler {
   }
 
   @Override
+  public void disconnect(final ChannelHandlerContext context, final ChannelPromise promise)
+      throws Exception {
+    context.disconnect(promise.addListener(new ChannelFutureListener() {
+      @Override
+      public void operationComplete(ChannelFuture future) {
+        if (!future.isSuccess()) {
+          logger.error("{}[{}] failed to disconnect from {}", type.name, id,
+              context.channel().remoteAddress());
+          context.write(Unpooled.copiedBuffer("Tiny TCP Transceiver Error", CharsetUtil.UTF_8))
+              .addListener(ChannelFutureListener.CLOSE);
+        } else {
+          logger.info("{}[{}] disconnected from {}", type.name, id,
+              context.channel().remoteAddress());
+        }
+      }
+    }));
+  }
+
+  @Override
   public void write(final ChannelHandlerContext context, final Object message,
       final ChannelPromise promise) {
     logger.info("{}[{}] writing", type.name, id);
@@ -150,6 +169,25 @@ final class TinyTCPStateHandler extends ChannelDuplexHandler {
         "{}[{}] is unregistered [allAcceptedConnections:{},allIdleTimeouts:{},allRequestsHandled:{}]",
         type.name, id, allAcceptedConnections.get(), allConnectionIdleTimeouts.get(),
         allRequestsHandled.get());
+  }
+
+  @Override
+  public void close(final ChannelHandlerContext context, final ChannelPromise promise)
+      throws Exception {
+    context.close(promise.addListener(new ChannelFutureListener() {
+      @Override
+      public void operationComplete(ChannelFuture future) {
+        if (!future.isSuccess()) {
+          logger.error("{}[{}] failed to close channel to {}", type.name, id,
+              context.channel().remoteAddress());
+          context.write(Unpooled.copiedBuffer("Tiny TCP Transceiver Error", CharsetUtil.UTF_8))
+              .addListener(ChannelFutureListener.CLOSE);
+        } else {
+          logger.info("{}[{}] closed channel to {}", type.name, id,
+              context.channel().remoteAddress());
+        }
+      }
+    }));
   }
 
   @Override
