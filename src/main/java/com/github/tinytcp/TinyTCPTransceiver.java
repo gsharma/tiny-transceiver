@@ -48,6 +48,8 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
+import io.netty.util.ResourceLeakDetector;
+import io.netty.util.ResourceLeakDetector.Level;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import io.netty.util.internal.logging.Log4J2LoggerFactory;
 
@@ -118,6 +120,7 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
     this.idProvider = idProvider;
     this.serverId = idProvider.id();
     this.clientId = idProvider.id();
+    ResourceLeakDetector.setLevel(Level.ADVANCED);
   }
 
   // just don't mess with the lifecycle methods
@@ -165,7 +168,6 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
     final ServerBootstrap serverBootstrap = new ServerBootstrap();
     serverBootstrap.group(eventLoopThreads, workerThreads).channel(NioServerSocketChannel.class)
         .handler(new LoggingHandler(LogLevel.INFO)).childHandler(new ChannelInitializer<Channel>() {
-
           @Override
           public void initChannel(final Channel channel) throws Exception {
             final ChannelPipeline pipeline = channel.pipeline();
@@ -180,7 +182,6 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
             pipeline.addLast(new TinyTCPStateHandler(serverId, Type.SERVER, idProvider));
           }
         });
-
     serverBootstrap.childOption(ChannelOption.TCP_NODELAY, true);
     serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
     serverBootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
