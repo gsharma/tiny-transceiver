@@ -120,7 +120,7 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
     this.idProvider = idProvider;
     this.serverId = idProvider.id();
     this.clientId = idProvider.id();
-    ResourceLeakDetector.setLevel(Level.ADVANCED);
+    ResourceLeakDetector.setLevel(Level.SIMPLE);
   }
 
   // just don't mess with the lifecycle methods
