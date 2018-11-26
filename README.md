@@ -1,5 +1,6 @@
 [![Build Status](https://img.shields.io/travis/gsharma/tiny-transceiver/master.svg)](https://travis-ci.org/gsharma/tiny-transceiver)
 [![Test Coverage](https://img.shields.io/codecov/c/github/gsharma/tiny-transceiver/master.svg)](https://codecov.io/github/gsharma/tiny-transceiver?branch=master)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=com.github.tinytcp:tiny-transceiver&metric=alert_status)](https://sonarcloud.io/dashboard?id=com.github.tinytcp:tiny-transceiver)
 [![Licence](https://img.shields.io/hexpm/l/plug.svg)](https://github.com/gsharma/tiny-transceiver/blob/master/LICENSE)
 
 # Tiny TCP Transceiver
@@ -20,8 +21,7 @@ Response serviceRequest(final Request request);
 // server specified by the server descriptor
 boolean dispatchRequest(final Request request, final ServerDescriptor server);
 
-// this allows a callback/handler to be registered on the client-side to
-// handle the response received asynchronously from the server
+// this allows a callback/handler to be registered on the client-side to // handle the response received asynchronously from the server
 void registerResponseHandler(final ResponseHandler responseHandler);
 
 // provide a custom implementation for client-side server-response handling
@@ -173,3 +173,15 @@ serverThread.interrupt();
 
 ## More Example Usage
 Take a look at the Reference Implementation in TransceiverRI for more inspiration on how to minimally extend the transceiver for use.
+
+
+## Tiny Transceiver as a lib
+Add mvn dependency:
+```xml
+<dependency>
+  <groupId>com.github.tinytcp</groupId>
+  <artifactId>tiny-transceiver</artifactId>
+  <version>1.0-SNAPSHOT</version>
+</dependency>
+```
+
