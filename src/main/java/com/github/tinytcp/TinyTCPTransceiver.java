@@ -184,6 +184,7 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
         });
     serverBootstrap.childOption(ChannelOption.TCP_NODELAY, true);
     serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
+    serverBootstrap.childOption(ChannelOption.SO_REUSEADDR, true);
     serverBootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
     serverBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 15000);
 
