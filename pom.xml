@@ -14,14 +14,15 @@
     <github.repo.name>tiny-transceiver</github.repo.name>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>4.12</junit.version>
-    <log4j.version>2.11.1</log4j.version>
+    <log4j.version>2.12.0</log4j.version>
     <javac.target>1.8</javac.target>
-    <netty.version>4.1.31.Final</netty.version>
-    <jackson.version>2.9.9</jackson.version>
-    <os-maven-plugin.version>1.6.1</os-maven-plugin.version>
-    <maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
+    <netty.version>4.1.38.Final</netty.version>
+    <jackson.version>2.9.9.2</jackson.version>
+    <jackson-annotations.version>2.9.9</jackson-annotations.version>
+    <os-maven-plugin.version>1.6.2</os-maven-plugin.version>
+    <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
     <maven-enforcer-plugin.version>3.0.0-M2</maven-enforcer-plugin.version>
-    <jacoco-maven-plugin.version>0.8.2</jacoco-maven-plugin.version>
+    <jacoco-maven-plugin.version>0.8.4</jacoco-maven-plugin.version>
     <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>
     <maven-deploy-plugin.version>3.0.0-M1</maven-deploy-plugin.version>
     <site-maven-plugin.version>0.12</site-maven-plugin.version>
@@ -79,7 +80,7 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
-      <version>${jackson.version}</version>
+      <version>${jackson-annotations.version}</version>
     </dependency>
 
     <dependency>
