@@ -14,11 +14,10 @@
     <github.repo.name>tiny-transceiver</github.repo.name>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>4.12</junit.version>
-    <log4j.version>2.12.0</log4j.version>
+    <log4j.version>2.12.1</log4j.version>
     <javac.target>1.8</javac.target>
-    <netty.version>4.1.38.Final</netty.version>
-    <jackson.version>2.9.9.2</jackson.version>
-    <jackson-annotations.version>2.9.9</jackson-annotations.version>
+    <netty.version>4.1.41.Final</netty.version>
+    <jackson.version>2.10.0.pr3</jackson.version>
     <os-maven-plugin.version>1.6.2</os-maven-plugin.version>
     <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
     <maven-enforcer-plugin.version>3.0.0-M2</maven-enforcer-plugin.version>
@@ -80,7 +79,7 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
-      <version>${jackson-annotations.version}</version>
+      <version>${jackson.version}</version>
     </dependency>
 
     <dependency>
