@@ -546,6 +546,7 @@ public abstract class TinyTCPTransceiver implements TinyTransceiver {
     logger.info("Client[{}] sending to server {}", clientId, request);
     final byte[] serializedRequest = request.serialize();
     final ChannelFuture future = clientChannel.write(Unpooled.copiedBuffer(serializedRequest));
+    // logger.info("Client[{}] sent to server {}", clientId, request);
     future.addListener(new ChannelFutureListener() {
 
       @Override

@@ -16,8 +16,8 @@
     <junit.version>4.12</junit.version>
     <log4j.version>2.12.1</log4j.version>
     <javac.target>1.8</javac.target>
-    <netty.version>4.1.41.Final</netty.version>
-    <jackson.version>2.10.0.pr3</jackson.version>
+    <netty.version>4.1.45.Final</netty.version>
+    <jackson.version>2.10.2</jackson.version>
     <os-maven-plugin.version>1.6.2</os-maven-plugin.version>
     <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
     <maven-enforcer-plugin.version>3.0.0-M2</maven-enforcer-plugin.version>
