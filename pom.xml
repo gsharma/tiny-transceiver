@@ -14,7 +14,7 @@
     <github.repo.name>tiny-transceiver</github.repo.name>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>4.12</junit.version>
-    <log4j.version>2.12.1</log4j.version>
+    <log4j.version>2.16.0</log4j.version>
     <javac.target>1.8</javac.target>
     <netty.version>4.1.45.Final</netty.version>
     <jackson.version>2.10.2</jackson.version>
